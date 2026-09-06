@@ -4,9 +4,9 @@ OWNER: Member 3. See plan.md §8.3.
 """
 
 import uuid
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import database_is_configured, get_db
@@ -81,10 +81,11 @@ def update_me(
 @router.get("/me/enrollments")
 def get_my_enrollments(
     user: CurrentUser,
+    authorization: Annotated[str | None, Header()] = None,
     db: Session | None = Depends(get_db),
 ) -> dict[str, Any]:
     """List courses the current user is enrolled in."""
-    if not db or not database_is_configured():
+    if not authorization or not db or not database_is_configured():
         return {"items": [], "total": 0}
 
     from app.models.course import Course, Enrollment
