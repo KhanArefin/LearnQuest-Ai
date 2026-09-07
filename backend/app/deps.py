@@ -20,13 +20,18 @@ returns a stub dev user so the other members are not blocked.
 
 from __future__ import annotations
 
+import base64
 import logging
+import ssl
 import uuid
 from datetime import datetime, timezone
 from typing import Annotated, Any
 
+import certifi
+import httpx
 import jwt
 from fastapi import Depends, Header, HTTPException, status
+from jwt import PyJWKClient
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -47,6 +52,20 @@ DEV_USER: dict[str, Any] = {
     "last_login_at": "2026-08-30T00:00:00Z",
 }
 
+_jwks_client: PyJWKClient | None = None
+
+
+def _get_jwks_client() -> PyJWKClient | None:
+    global _jwks_client
+    if _jwks_client is None and settings.supabase_url:
+        try:
+            ctx = ssl.create_default_context(cafile=certifi.where())
+            jwks_url = f"{settings.supabase_url.rstrip('/')}/auth/v1/.well-known/jwks.json"
+            _jwks_client = PyJWKClient(jwks_url, ssl_context=ctx, cache_keys=True)
+        except Exception as exc:
+            logger.warning("Failed to initialize Supabase JWKS client: %s", exc)
+    return _jwks_client
+
 
 def _unauthorized(detail: str, code: str) -> HTTPException:
     return HTTPException(
@@ -57,25 +76,95 @@ def _unauthorized(detail: str, code: str) -> HTTPException:
 
 
 def verify_supabase_token(token: str) -> dict[str, Any]:
-    """Decode and validate a Supabase access token locally using SUPABASE_JWT_SECRET.
+    """Decode and validate a Supabase access token using JWKS or SUPABASE_JWT_SECRET.
 
+    Supports modern ES256/RS256 asymmetric keys via Supabase JWKS as well as legacy HS256.
+    Allows configurable leeway to tolerate client-server clock skew.
     Raises HTTPException(401) on anything invalid. Returns the JWT claims.
     """
-    if not settings.supabase_jwt_secret:
-        raise _unauthorized(
-            "SUPABASE_JWT_SECRET is not configured.", "AUTH_NOT_CONFIGURED"
-        )
     try:
-        return jwt.decode(
-            token,
-            settings.supabase_jwt_secret,
-            algorithms=["HS256"],
-            audience="authenticated",
-        )
-    except jwt.ExpiredSignatureError:
-        raise _unauthorized("Token has expired.", "AUTH_TOKEN_EXPIRED") from None
-    except jwt.InvalidTokenError as exc:
-        raise _unauthorized(f"Invalid token: {exc}", "AUTH_TOKEN_INVALID") from None
+        header = jwt.get_unverified_header(token)
+    except Exception as exc:
+        raise _unauthorized(f"Malformed token header: {exc}", "AUTH_TOKEN_INVALID") from None
+
+    alg = header.get("alg", "HS256")
+    leeway = settings.jwt_leeway_seconds
+
+    # Asymmetric signing (ES256, RS256) via Supabase JWKS
+    if alg in ("ES256", "RS256"):
+        jwks_client = _get_jwks_client()
+        if jwks_client:
+            try:
+                signing_key = jwks_client.get_signing_key_from_jwt(token)
+                return jwt.decode(
+                    token,
+                    signing_key.key,
+                    algorithms=[alg],
+                    audience="authenticated",
+                    leeway=leeway,
+                )
+            except jwt.ExpiredSignatureError:
+                raise _unauthorized("Token has expired.", "AUTH_TOKEN_EXPIRED") from None
+            except jwt.InvalidTokenError as exc:
+                logger.warning("JWKS token decode failed (%s), trying fallback...", exc)
+            except Exception as exc:
+                logger.warning("JWKS key retrieval failed (%s), trying fallback...", exc)
+
+    # Symmetric HS256 validation (legacy secret)
+    if settings.supabase_jwt_secret:
+        try:
+            return jwt.decode(
+                token,
+                settings.supabase_jwt_secret,
+                algorithms=["HS256"],
+                audience="authenticated",
+                leeway=leeway,
+            )
+        except jwt.ExpiredSignatureError:
+            raise _unauthorized("Token has expired.", "AUTH_TOKEN_EXPIRED") from None
+        except jwt.InvalidTokenError:
+            try:
+                decoded_secret = base64.b64decode(settings.supabase_jwt_secret)
+                return jwt.decode(
+                    token,
+                    decoded_secret,
+                    algorithms=["HS256"],
+                    audience="authenticated",
+                    leeway=leeway,
+                )
+            except jwt.ExpiredSignatureError:
+                raise _unauthorized("Token has expired.", "AUTH_TOKEN_EXPIRED") from None
+            except Exception:
+                pass
+
+    # Authoritative fallback via Supabase Auth API
+    if settings.supabase_url:
+        try:
+            auth_headers = {"Authorization": f"Bearer {token}"}
+            if settings.supabase_service_role_key:
+                auth_headers["apikey"] = settings.supabase_service_role_key
+            resp = httpx.get(
+                f"{settings.supabase_url.rstrip('/')}/auth/v1/user",
+                headers=auth_headers,
+                timeout=5.0,
+            )
+            if resp.status_code == 200:
+                user_data = resp.json()
+                return {
+                    "sub": user_data.get("id"),
+                    "email": user_data.get("email"),
+                    "role": user_data.get("role", "authenticated"),
+                    "user_metadata": user_data.get("user_metadata", {}),
+                    "app_metadata": user_data.get("app_metadata", {}),
+                }
+            elif resp.status_code == 401:
+                raise _unauthorized("Token is not recognized by Supabase.", "AUTH_TOKEN_INVALID")
+        except HTTPException:
+            raise
+        except Exception as exc:
+            logger.warning("Supabase Auth API user verification failed: %s", exc)
+
+    raise _unauthorized("Invalid token or signature verification failed.", "AUTH_TOKEN_INVALID")
 
 
 def _sync_user_in_db(
@@ -86,54 +175,62 @@ def _sync_user_in_db(
     default_role: str = "student",
 ) -> dict[str, Any]:
     """Look up or create the public.users row, update last_login_at, and emit daily.login."""
+    fallback_user = {
+        "id": str(user_id),
+        "email": email,
+        "full_name": full_name,
+        "avatar_url": avatar_url,
+        "role": default_role,
+        "preferences": {},
+    }
+
     if not database_is_configured():
-        return {
-            "id": str(user_id),
-            "email": email,
-            "full_name": full_name,
-            "avatar_url": avatar_url,
-            "role": default_role,
-            "preferences": {},
-        }
+        return fallback_user
 
-    session_factory = get_session_factory()
-    with session_factory() as db:
-        user_row = db.query(User).filter(User.id == user_id).first()
-        now = datetime.now(timezone.utc)
-        is_first_login_today = False
+    try:
+        session_factory = get_session_factory()
+        with session_factory() as db:
+            user_row = db.query(User).filter(User.id == user_id).first()
+            now = datetime.now(timezone.utc)
+            is_first_login_today = False
 
-        if not user_row:
-            user_row = User(
-                id=user_id,
-                email=email,
-                full_name=full_name,
-                avatar_url=avatar_url,
-                role=default_role,
-                preferences={},
-                created_at=now,
-                last_login_at=now,
-            )
-            db.add(user_row)
-            db.commit()
-            db.refresh(user_row)
-            is_first_login_today = True
-        else:
-            if user_row.last_login_at is None or user_row.last_login_at.date() < now.date():
+            if not user_row:
+                user_row = User(
+                    id=user_id,
+                    email=email,
+                    full_name=full_name,
+                    avatar_url=avatar_url,
+                    role=default_role,
+                    preferences={},
+                    created_at=now,
+                    last_login_at=now,
+                )
+                db.add(user_row)
+                db.commit()
+                db.refresh(user_row)
                 is_first_login_today = True
-            user_row.last_login_at = now
-            if full_name and not user_row.full_name:
-                user_row.full_name = full_name
-            if avatar_url and not user_row.avatar_url:
-                user_row.avatar_url = avatar_url
-            db.commit()
-            db.refresh(user_row)
+            else:
+                if user_row.last_login_at is None or user_row.last_login_at.date() < now.date():
+                    is_first_login_today = True
+                user_row.last_login_at = now
+                if full_name and not user_row.full_name:
+                    user_row.full_name = full_name
+                if avatar_url and not user_row.avatar_url:
+                    user_row.avatar_url = avatar_url
+                db.commit()
+                db.refresh(user_row)
 
-        user_data = user_row.to_dict()
+            user_data = user_row.to_dict()
 
-        if is_first_login_today:
-            emit(db, user_row.id, "daily.login", {})
+            if is_first_login_today:
+                emit(db, user_row.id, "daily.login", {})
 
-        return user_data
+            return user_data
+    except Exception as exc:
+        logger.warning(
+            "Database user sync failed (%s); returning user from token claims.", exc
+        )
+        return fallback_user
 
 
 def get_current_user(

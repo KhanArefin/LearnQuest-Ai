@@ -6,20 +6,52 @@ These are stubs so the router graph is wired from day 1. Replace the bodies with
 real implementations - keep the paths, they are the contract other members code against.
 """
 
-from fastapi import APIRouter
+import uuid
 
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+from app.database import get_db
 from app.deps import CurrentUser
+from app.models.gamification import UserStats
+from app.services import xp_engine  # noqa: F401
+from app.services.xp_engine import xp_for_level
 
 router = APIRouter(prefix="/api", tags=["gamification"])
 
 
 @router.get("/me/stats")
-def my_stats(user: CurrentUser) -> dict:
+def my_stats(user: CurrentUser, db: Session | None = Depends(get_db)) -> dict:
     """Everything the dashboard header needs."""
-    # TODO(M4): read user_stats, compute next_level_xp from 100 * n^1.5.
+    user_uuid = None
+    if user and "id" in user:
+        try:
+            user_uuid = uuid.UUID(str(user["id"]))
+        except ValueError:
+            user_uuid = None
+
+    if db is not None and user_uuid:
+        stats = db.query(UserStats).filter(UserStats.user_id == user_uuid).first()
+        if stats:
+            next_xp = xp_for_level(stats.level + 1)
+            return {
+                "xp": stats.xp,
+                "level": stats.level,
+                "next_level_xp": next_xp,
+                "coins": stats.coins,
+                "current_streak": stats.current_streak,
+                "longest_streak": stats.longest_streak,
+                "total_learning_seconds": stats.total_learning_seconds,
+            }
+
     return {
-        "xp": 0, "level": 1, "next_level_xp": 283, "coins": 0,
-        "current_streak": 0, "longest_streak": 0, "total_learning_seconds": 0,
+        "xp": 0,
+        "level": 1,
+        "next_level_xp": 283,
+        "coins": 0,
+        "current_streak": 0,
+        "longest_streak": 0,
+        "total_learning_seconds": 0,
     }
 
 

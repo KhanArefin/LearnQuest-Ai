@@ -9,4 +9,4 @@ from app.database import Base  # noqa: F401
 from app.models import course, user  # M3
 # from app.models import progress, quiz      # M2
 # from app.models import ai                  # M1
-# from app.models import gamification        # M4
+from app.models import gamification        # M4
