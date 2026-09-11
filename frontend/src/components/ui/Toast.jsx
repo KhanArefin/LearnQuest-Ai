@@ -4,6 +4,15 @@ import { createContext, useCallback, useContext, useState } from 'react';
 
 const ToastContext = createContext(null);
 
+const TOAST_TONES = {
+  default: '',
+  primary: 'border-l-4 border-l-primary-600',
+  success: 'border-l-4 border-l-emerald-500',
+  warning: 'border-l-4 border-l-amber-500',
+  danger: 'border-l-4 border-l-rose-500',
+  error: 'border-l-4 border-l-rose-500',
+};
+
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
 
@@ -18,7 +27,13 @@ export function ToastProvider({ children }) {
       {children}
       <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
         {toasts.map((t) => (
-          <div key={t.id} className="card animate-fade-in px-4 py-3 text-sm shadow-lg">
+          <div
+            key={t.id}
+            role="status"
+            className={`card animate-fade-in px-4 py-3 text-sm shadow-lg ${
+              TOAST_TONES[t.tone] || ''
+            }`}
+          >
             {t.message}
           </div>
         ))}
@@ -29,6 +44,12 @@ export function ToastProvider({ children }) {
 
 export function useToast() {
   const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error('useToast must be used inside <ToastProvider>');
+  if (!ctx) {
+    return {
+      push: (message, tone = 'default') => {
+        console.info(`[Toast ${tone}]: ${message}`);
+      },
+    };
+  }
   return ctx;
 }

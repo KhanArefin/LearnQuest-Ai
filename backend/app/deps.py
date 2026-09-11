@@ -56,11 +56,54 @@ def _unauthorized(detail: str, code: str) -> HTTPException:
     )
 
 
-def verify_supabase_token(token: str) -> dict[str, Any]:
-    """Decode and validate a Supabase access token locally using SUPABASE_JWT_SECRET.
+_jwks_client: jwt.PyJWKClient | None = None
 
+
+def get_jwks_client() -> jwt.PyJWKClient | None:
+    global _jwks_client
+    if _jwks_client is None and settings.supabase_url:
+        url = f"{settings.supabase_url.rstrip('/')}/auth/v1/.well-known/jwks.json"
+        try:
+            _jwks_client = jwt.PyJWKClient(url, cache_jwk_set=True, lifespan=3600)
+        except Exception as e:
+            logger.warning("Failed to initialize JWKS client: %s", e)
+    return _jwks_client
+
+
+def verify_supabase_token(token: str) -> dict[str, Any]:
+    """Decode and validate a Supabase access token.
+
+    Supports asymmetric ES256/RS256 via Supabase JWKS as well as legacy HS256 via SUPABASE_JWT_SECRET.
     Raises HTTPException(401) on anything invalid. Returns the JWT claims.
     """
+    try:
+        header = jwt.get_unverified_header(token)
+    except Exception as exc:
+        raise _unauthorized(f"Malformed token header: {exc}", "AUTH_TOKEN_INVALID") from None
+
+    alg = header.get("alg", "HS256")
+
+    # If the token was signed with an asymmetric key (ES256, RS256)
+    if alg in {"ES256", "RS256", "EdDSA"}:
+        jwks = get_jwks_client()
+        if not jwks:
+            raise _unauthorized("Supabase JWKS is not configured.", "AUTH_NOT_CONFIGURED")
+        try:
+            signing_key = jwks.get_signing_key_from_jwt(token)
+            return jwt.decode(
+                token,
+                signing_key.key,
+                algorithms=[alg],
+                audience="authenticated",
+            )
+        except jwt.ExpiredSignatureError:
+            raise _unauthorized("Token has expired.", "AUTH_TOKEN_EXPIRED") from None
+        except jwt.InvalidTokenError as exc:
+            raise _unauthorized(f"Invalid token: {exc}", "AUTH_TOKEN_INVALID") from None
+        except Exception as exc:
+            raise _unauthorized(f"JWKS key resolution failed: {exc}", "AUTH_TOKEN_INVALID") from None
+
+    # Legacy HS256 symmetric verification
     if not settings.supabase_jwt_secret:
         raise _unauthorized(
             "SUPABASE_JWT_SECRET is not configured.", "AUTH_NOT_CONFIGURED"
@@ -144,6 +187,23 @@ def get_current_user(
         token = authorization.split(" ", 1)[1].strip()
         if not token:
             raise _unauthorized("Empty bearer token.", "AUTH_EMPTY_TOKEN")
+
+        # Dev token support for local testing with dummy accounts: Bearer dev:<user_id>:<email>
+        if token.startswith("dev:"):
+            parts = token.split(":")
+            try:
+                dev_id = uuid.UUID(parts[1])
+                dev_email = parts[2] if len(parts) > 2 else f"{dev_id}@learnquest.local"
+            except (ValueError, IndexError):
+                dev_id = uuid.UUID(DEV_USER["id"])
+                dev_email = DEV_USER["email"]
+            name_part = dev_email.split("@")[0].replace(".", " ").title()
+            return _sync_user_in_db(
+                user_id=dev_id,
+                email=dev_email,
+                full_name=name_part,
+                default_role="student",
+            )
 
         if not settings.supabase_jwt_secret and settings.dev_allow_anonymous:
             # Running in dev mode with mock token or unconfigured secret

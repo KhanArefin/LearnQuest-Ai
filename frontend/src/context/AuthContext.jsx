@@ -22,6 +22,19 @@ const DEV_USER = {
   avatar_url: null,
 };
 
+function generateDevUserId(email) {
+  if (email === 'dev@learnquest.local' || email === 'admin@learnquest.ai') {
+    return '00000000-0000-0000-0000-000000000001';
+  }
+  let hash = 0;
+  for (let i = 0; i < email.length; i++) {
+    hash = ((hash << 5) - hash) + email.charCodeAt(i);
+    hash |= 0;
+  }
+  const hex = Math.abs(hash).toString(16).padStart(8, '0');
+  return `00000000-0000-4000-8000-${hex.padEnd(12, '0').slice(0, 12)}`;
+}
+
 function toAppUser(session) {
   if (!session?.user) return null;
   const { id, email, user_metadata: meta = {} } = session.user;
@@ -56,8 +69,20 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
-      setTokenProvider(async () => null);
-      setUser(DEV_USER);
+      const stored = localStorage.getItem('learnquest_dev_user');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          setTokenProvider(async () => `dev:${parsed.id}:${parsed.email}`);
+          setUser(parsed);
+        } catch {
+          setTokenProvider(async () => null);
+          setUser(null);
+        }
+      } else {
+        setTokenProvider(async () => null);
+        setUser(null);
+      }
       setLoading(false);
       return undefined;
     }
@@ -106,7 +131,18 @@ export function AuthProvider({ children }) {
       async login(email, password) {
         setError(null);
         if (!isSupabaseConfigured) {
-          setUser(DEV_USER);
+          const devId = generateDevUserId(email);
+          const devAccount = {
+            id: devId,
+            email,
+            full_name: email.split('@')[0].replace('.', ' '),
+            role: email.includes('admin') ? 'admin' : 'student',
+            avatar_url: null,
+          };
+          localStorage.setItem('learnquest_dev_user', JSON.stringify(devAccount));
+          setTokenProvider(async () => `dev:${devAccount.id}:${devAccount.email}`);
+          setUser(devAccount);
+          await syncWithBackend(devAccount);
           return null;
         }
         const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
@@ -123,7 +159,10 @@ export function AuthProvider({ children }) {
       async loginWithGoogle() {
         setError(null);
         if (!isSupabaseConfigured) {
-          setUser(DEV_USER);
+          const devAccount = { ...DEV_USER };
+          localStorage.setItem('learnquest_dev_user', JSON.stringify(devAccount));
+          setTokenProvider(async () => `dev:${devAccount.id}:${devAccount.email}`);
+          setUser(devAccount);
           return null;
         }
         const { error: err } = await supabase.auth.signInWithOAuth({
@@ -146,7 +185,18 @@ export function AuthProvider({ children }) {
       async register(email, password, fullName) {
         setError(null);
         if (!isSupabaseConfigured) {
-          setUser({ ...DEV_USER, email, full_name: fullName });
+          const devId = generateDevUserId(email);
+          const devAccount = {
+            id: devId,
+            email,
+            full_name: fullName || email.split('@')[0],
+            role: 'student',
+            avatar_url: null,
+          };
+          localStorage.setItem('learnquest_dev_user', JSON.stringify(devAccount));
+          setTokenProvider(async () => `dev:${devAccount.id}:${devAccount.email}`);
+          setUser(devAccount);
+          await syncWithBackend(devAccount);
           return null;
         }
         const { data, error: err } = await supabase.auth.signUp({
@@ -158,9 +208,18 @@ export function AuthProvider({ children }) {
           setError(err.message);
           return err;
         }
-        const appUser = toAppUser(data.session);
-        setUser(appUser);
-        if (appUser) await syncWithBackend(appUser);
+        if (data?.session) {
+          const appUser = toAppUser(data.session);
+          setUser(appUser);
+          if (appUser) await syncWithBackend(appUser);
+        } else if (data?.user) {
+          const { data: signData } = await supabase.auth.signInWithPassword({ email, password });
+          if (signData?.session) {
+            const appUser = toAppUser(signData.session);
+            setUser(appUser);
+            if (appUser) await syncWithBackend(appUser);
+          }
+        }
         return null;
       },
 
@@ -181,6 +240,8 @@ export function AuthProvider({ children }) {
 
       async logout() {
         if (isSupabaseConfigured) await supabase.auth.signOut();
+        localStorage.removeItem('learnquest_dev_user');
+        setTokenProvider(async () => null);
         setUser(null);
       },
     }),
