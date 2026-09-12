@@ -244,13 +244,13 @@ no models are defined, and no migrations exist yet.
 ## Member 4 — Gamification & Analytics
 
 ### Week 1 — the event bus (the team is blocked on this too)
-- [x] **Day 1–2:** `services/events.py` with `on()` + `emit()` — scaffold, 2026-08-30 · all 7 event types declared
-- [x] **Every handler wrapped in try/except — a failing handler must never 500 the caller** — scaffold, 2026-08-30 · verified with a deliberately raising handler
-- [ ] `models/gamification.py`: all 7 tables + migration — @
-- [~] `services/xp_engine.py`: `XP_AWARDS` table + caps defined; `award_xp()` and `update_streak()` still raise NotImplementedError — scaffold, 2026-08-30
-- [ ] Every XP award writes an `xp_events` row — @
+- [x] **Day 1–2:** `services/events.py` with `register_handler()` / `on()` + `emit()` — @member4, 2026-09-07 · all event types declared, extensible, unit test suite verified
+- [x] **Every handler wrapped in try/except — a failing handler must never 500 the caller** — @member4, 2026-09-07 · verified in test_events.py with raising handler isolation
+- [x] `models/gamification.py`: all 7 tables + migration — @member4, 2026-09-07 · user_stats, xp_events, badges, user_badges, daily_challenges, user_challenges, notifications + migration 0002
+- [x] `services/xp_engine.py`: `award_xp()`, `update_streak()`, daily tutor cap, and event handlers wired — @member4, 2026-09-07 · unit test suite verified
+- [x] Every XP award writes an `xp_events` row — @member4, 2026-09-07 · verified in test_xp_engine.py
 - [x] Level curve `100 * n^1.5` implemented — scaffold, 2026-08-30 · verified L2=282, L5=1118, L10=3162
-- [~] `GET /api/me/stats` route exists but returns hardcoded zeros; needs a real `user_stats` read — scaffold, 2026-08-30
+- [x] `GET /api/me/stats` route wired to real `user_stats` read — @member4, 2026-09-07 · verified in test_integration_scenarios.py
 - [ ] `XPBar` + `StreakFlame` components exported for M2's dashboard — @
 
 ### Week 2 — badges, streaks, leaderboard

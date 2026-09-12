@@ -56,10 +56,11 @@ export function AuthProvider({ children }) {
   const syncWithBackend = async (baseUser) => {
     try {
       const res = await syncUser();
-      if (res?.data?.user) {
+      const userData = res?.user || res?.data?.user;
+      if (userData) {
         setUser((prev) => ({
           ...(prev || baseUser),
-          ...res.data.user,
+          ...userData,
         }));
       }
     } catch (err) {
@@ -87,36 +88,78 @@ export function AuthProvider({ children }) {
       return undefined;
     }
 
+    let isMounted = true;
+    const hasAuthRedirectInUrl =
+      typeof window !== 'undefined' &&
+      (window.location.hash.includes('access_token=') ||
+        window.location.hash.includes('error=') ||
+        window.location.search.includes('code='));
+
     // The interceptor in api/client.js pulls the token from here on every request.
-    setTokenProvider(async () => {
+    setTokenProvider(async (forceRefresh = false) => {
+      if (forceRefresh) {
+        try {
+          const { data, error } = await supabase.auth.refreshSession();
+          if (error || !data?.session) return null;
+          return data.session.access_token;
+        } catch {
+          return null;
+        }
+      }
       const { data } = await supabase.auth.getSession();
       return data.session?.access_token ?? null;
     });
 
-    supabase.auth.getSession().then(({ data }) => {
-      const appUser = toAppUser(data.session);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!isMounted) return;
+      const appUser = toAppUser(session);
       setUser(appUser);
       setLoading(false);
       if (appUser) {
-        syncWithBackend(appUser);
+        await syncWithBackend(appUser);
       }
     });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      const appUser = toAppUser(session);
-      setUser(appUser);
+    supabase.auth.getSession().then(({ data }) => {
+      if (!isMounted) return;
+      const appUser = toAppUser(data.session);
       if (appUser) {
+        setUser(appUser);
+        setLoading(false);
         syncWithBackend(appUser);
+      } else if (!hasAuthRedirectInUrl) {
+        setUser(null);
+        setLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    let timeoutId;
+    if (hasAuthRedirectInUrl) {
+      timeoutId = setTimeout(() => {
+        if (isMounted) setLoading(false);
+      }, 4000);
+    }
+
+    return () => {
+      isMounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
-    setUnauthorizedHandler(() => setUser(null));
+    setUnauthorizedHandler(async () => {
+      if (isSupabaseConfigured) {
+        try {
+          await supabase.auth.signOut();
+        } catch {
+          // ignore sign out errors
+        }
+      }
+      setUser(null);
+    });
   }, []);
 
   const value = useMemo(

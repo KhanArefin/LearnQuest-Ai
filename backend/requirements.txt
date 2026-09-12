@@ -17,6 +17,7 @@ email-validator>=2.2.0
 # --- auth (Supabase Auth: verify the JWT locally) ---
 pyjwt>=2.10.1
 cryptography>=42.0.0
+certifi>=2024.2.2
 
 # --- http / ai ---
 httpx>=0.28.1

@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     supabase_jwt_secret: str = ""
     supabase_service_role_key: str = ""
     dev_allow_anonymous: bool = True
+    jwt_leeway_seconds: int = 7200
 
     # --- llm (M1) ---
     llm_provider: str = "mock"

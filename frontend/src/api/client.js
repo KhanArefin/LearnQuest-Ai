@@ -47,17 +47,19 @@ client.interceptors.response.use(
     const { response, config } = error;
 
     // One retry on 401 with a force-refreshed token (plan.md 8.2).
-    if (response?.status === 401 && !config._retried) {
+    if (response?.status === 401 && !config?._retried) {
       config._retried = true;
       try {
         const token = await tokenProvider(true);
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
-          return client(config);
+          return await client(config);
         }
       } catch {
         /* fall through to the handler below */
       }
+      onUnauthorized();
+    } else if (response?.status === 401 && config?._retried) {
       onUnauthorized();
     }
 
