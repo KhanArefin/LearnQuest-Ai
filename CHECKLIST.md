@@ -169,10 +169,10 @@ Nova → Nova passes.
 
 **Admin panel.**
 
-- [ ] `AdminOverview.jsx` — user/course/activity counts — @, 2026-__-__
-- [ ] `AdminCourses.jsx` — create / edit / publish a course — @, 2026-__-__
-- [ ] `GET /api/admin/overview` — real numbers — @, 2026-__-__
-- [ ] Confirm `DEV_ALLOW_ANONYMOUS=false` anywhere deployed — @, 2026-__-__
+- [x] `AdminOverview.jsx` — user/course/activity counts — @member3, 2026-09-21
+- [x] `AdminCourses.jsx` — create / edit / publish a course — @member3, 2026-09-21
+- [x] `GET /api/admin/overview` — real numbers — @member3, 2026-09-21
+- [x] Confirm `DEV_ALLOW_ANONYMOUS=false` anywhere deployed — @member3, 2026-09-21 · guarded by `is_production` check and env settings
 
 **→ Push, then tell M4.**
 

@@ -6,6 +6,7 @@ import {
   BookOpen,
   Sparkles,
   Shield,
+  Users,
   LogOut,
 } from 'lucide-react';
 
@@ -105,9 +106,17 @@ export default function AppLayout() {
           {isAdmin && (
             <>
               <span className="label mt-4 px-3">Admin</span>
-              <NavLink to="/admin" className={railLink}>
+              <NavLink to="/admin" end className={railLink}>
                 <Shield className="h-4 w-4 shrink-0" />
                 Overview
+              </NavLink>
+              <NavLink to="/admin/courses" className={railLink}>
+                <BookOpen className="h-4 w-4 shrink-0" />
+                Courses
+              </NavLink>
+              <NavLink to="/admin/users" className={railLink}>
+                <Users className="h-4 w-4 shrink-0" />
+                Users
               </NavLink>
             </>
           )}
