@@ -485,6 +485,11 @@ def main() -> None:
 
         seed_extra_courses(db, created_by=course.created_by if course else None)
         try:
+            from app.seed.seed_quizzes import seed_quizzes
+            seed_quizzes(db)
+        except Exception as e:
+            logger.warning("seed_quizzes failed: %s", e)
+        try:
             seed_badges(db)
         except Exception:
             pass
