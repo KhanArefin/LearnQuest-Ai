@@ -1,331 +1,230 @@
-# LearnQuest AI — Team Checklist
+# LearnQuest AI — 2-Week Delivery Checklist
 
-> **Update this file in the same PR as the work it describes.** Not afterwards, not at the end of the week.
+> **How this works:** one member works at a time, in slot order. When your slot is
+> done you **push to `main` and message the group**. The next person pulls and starts.
+> Nobody works on the same files at the same time, so there are no merge conflicts.
 >
-> Mark a box `[x]` only when it is **done end to end**: migration applied + API returns real data +
-> UI renders it + it still works after someone else runs `git pull`.
-> Use `[~]` for in-progress and add your name + date next to anything you tick.
+> Tick `[x]` only when it works end to end: API returns real data → UI renders it →
+> still works after `git pull`.
 >
-> Format: `- [x] Task description — @yourname, 2026-09-03`
+> Format: `- [x] Task — @yourname, 2026-09-22`
 
-**Legend:** `[ ]` not started · `[~]` in progress · `[x]` done · `[-]` cut from scope (say why)
-
----
-
-## Scaffold status (commit `2f6065c`, 2026-08-30)
-
-The repo skeleton is pushed. Boxes ticked below with `scaffold` were delivered by that
-commit and **verified running**, not just written. Everything else is still yours to build.
-
-What actually works today:
-
-- Backend boots and serves **44 routes**; `/api/health` responds
-- Event bus verified: a deliberately raising handler was logged and swallowed, and the
-  other handler still ran
-- Admin gate verified: **403** for a student role, **200** for admin
-- XP level curve verified: L2=282, L5=1118, L10=3162
-- Frontend builds clean and renders with **zero console errors**
-- `DEV_ALLOW_ANONYMOUS=true` + `LLM_PROVIDER=mock` mean the whole app runs with
-  **no Supabase project and no API key** - start building today
-
-What is deliberately NOT done: every endpoint body is a stub returning placeholder data,
-no models are defined, and no migrations exist yet.
+**Legend:** `[ ]` not started · `[~]` in progress · `[x]` done · `[-]` cut
 
 ---
 
-## How to update
+## The pitch
 
-1. Find your section (Member 1–4) and the current week.
-2. Change the box and append `— @yourname, YYYY-MM-DD`.
-3. If you got blocked, add a line under **Blockers** at the bottom instead of silently stalling.
-4. Commit it with your work: `git commit -m "feat(tutor): streaming chat + checklist"`.
+> **A tutor that models your mind, not your score — with a real human face.**
 
----
-
-## Tier 1 — the features the project is judged on
-
-> If only these ship, the project still works. See plan.md §0.1.
-> **Everything in this block is more important than anything below it.**
-
-- [ ] `topic_mastery.misconception` + `misconception_updated_at` in the schema — @
-- [ ] Wrong answer → LLM writes what the learner believes that is untrue — @
-- [ ] Nothing written when no specific belief can be identified (an invented one is harmful) — @
-- [ ] Misconception cleared after two consecutive correct answers — @
-- [ ] Tutor/avatar explains **that belief**, not the topic in general — @
-- [ ] Free-response answers with written feedback (not just MCQ) — @
-- [ ] Grading is lenient: 10 awkward-but-correct answers all pass — @
-- [ ] Answer & feedback screen built and designed properly (M2) — @
-
-## Tier 2 — the learning engine
-
-- [ ] `review_items` table + SM-2-lite scheduling — @
-- [ ] `GET /api/review/today` returns due items with freshly generated questions — @
-- [ ] Topics interleaved within a session, not blocked — @
-- [ ] Daily queue capped (~15 items) — @
-- [ ] `/review` is the app's front door, not `/dashboard` — @
-- [ ] Upload a PDF → becomes a private course with tagged lessons — @
+A wrong answer doesn't just score 0. The app names **the false belief** behind it,
+then the photoreal SyncTalk tutor is seeded with **your** misconception and you have
+to teach it out of the mistake. Its score on the retry is your grade.
+(*The protégé effect* — real education research.)
 
 ---
 
-## Week 0 — Shared setup (all four, together, day 1)
+## File ownership — never edit someone else's files
 
-- [~] GitHub repo created, scaffold pushed — scaffold, 2026-08-30 · TODO: grant push access to M2/M3/M4
-- [ ] Supabase project created; `DATABASE_URL`, project URL, anon key and JWT secret shared — @
-- [ ] LLM provider account + API key obtained — @
-- [ ] (Optional, voice mode) Gemini API key + LiveKit credentials — @
-- [~] Backend verified booting locally, 44 routes served — scaffold, 2026-08-30 · each member still to confirm on their own machine
-- [~] Frontend verified building and rendering — scaffold, 2026-08-30 · each member still to confirm on their own machine
-- [x] All four routers registered in `main.py` in ONE shared commit — scaffold, 2026-08-30
-- [x] All four route groups added to `App.jsx` in ONE shared commit — scaffold, 2026-08-30
-- [~] Starter vocabulary in `backend/app/seed/seed_data.py` (`TOPIC_VOCABULARY`) — scaffold, 2026-08-30 · **team still has to agree it, before M3 writes seed data**
-- [x] Content language: **English** — decided 2026-08-31
-- [ ] Test the SyncTalk model on English audio (it was trained on Bangla speech) — @
-- [ ] Everyone has read plan.md §0–§4 — @
+| Member | Backend | Frontend |
+|---|---|---|
+| **M1** (AI) | `routers/{tutor,avatar,roadmap}.py`, `services/{llm_client,prompts,mastery,roadmap_planner}.py`, `models/{ai,roadmap}.py` | `pages/{Tutor,Roadmap}/`, `components/avatar/`, `api/{tutor,avatar,roadmap}.js` |
+| **M2** (Learning) | `routers/{courses,lessons,progress,quizzes}.py`, `models/{course,progress,quiz}.py` | `pages/{Courses,Lesson,Quiz,Practice}/`, `components/ui/`, `api/{courses,lessons,quizzes}.js` |
+| **M3** (Users) | `routers/{auth,users,admin}.py`, `models/user.py`, `deps.py` | `pages/{Auth,Profile,Admin}/`, `components/layout/`, `context/AuthContext.jsx` |
+| **M4** (Game) | `routers/{gamification,analytics}.py`, `services/{xp_engine,events}.py`, `models/gamification.py` | `pages/{Dashboard,Achievements,Leaderboard,Stats,History}/`, `api/{gamification,analytics}.js` |
 
----
+**Shared — announce before touching:** `app/main.py` · `app/models/__init__.py` ·
+`frontend/src/App.jsx` · `tailwind.config.js` · `index.css` · `api/client.js`
 
-## Member 1 — AI Avatar Tutor & Intelligent Learning (Lead)
-
-### Week 1 — foundations
-- [~] Provider options documented in `backend/.env.example`, defaults to `mock`; Groq recommended, decision pending — scaffold, 2026-08-30
-- [x] `services/llm_client.py`: `complete()` + `stream()` with retry, timeout, token logging — scaffold, 2026-08-30 · works against Groq/OpenAI unchanged
-- [x] `MockLLMClient` working under `LLM_PROVIDER=mock` — scaffold, 2026-08-30 · verified for both text and JSON-mode quiz output
-- [~] `services/prompts.py`: prompt constants scaffolded; `build_tutor_context()` still raises NotImplementedError — scaffold, 2026-08-30
-- [ ] `models/ai.py`: `conversations`, `messages`, `topic_mastery`, `recommendations` + migration — @
-- [ ] `POST /api/tutor/conversations` and message CRUD working — @
-- [ ] Non-streaming chat endpoint returns a real LLM answer — @
-- [ ] Minimal chat UI at `/tutor` talking to the backend — @
-- [ ] Tier A avatar spike: mouth moves in time with `speechSynthesis` — @
-
-### Week 2 — streaming, memory, quizzes
-- [ ] SSE streaming endpoint `GET /api/tutor/conversations/{id}/stream` — @
-- [ ] Context builder: system + profile + lesson content + summary + last 8 turns — @
-- [ ] Rolling summarisation kicks in past 16 messages — @
-- [ ] `services/quiz_generator.py` with JSON-mode output + Pydantic validation — @
-- [ ] Guardrails: answer-in-options check, duplicate-prompt check, 10-question cap, rate limit — @
-- [ ] `POST /api/quizzes/generate` returns a quiz in M2's exact shape — @
-- [ ] Adaptive difficulty derived from `topic_mastery` — @
-- [ ] `emit("quiz.generated", ...)` wired — @
-- [ ] TTS endpoint returning `{audio_url, visemes}` — @
-
-### Week 3 — mastery, recommendations, avatar
-- [ ] Lipsync accurate against real audio; idle blink + head sway — @
-- [ ] Expression state machine (`neutral / thinking / explaining / encouraging`) — @
-- [ ] `services/mastery.py` subscribed to `quiz.submitted` and updating `topic_mastery` — @
-- [ ] `services/recommender.py` hybrid scoring with a human-readable `reason` on every item — @
-- [ ] `GET /api/recommendations` + `/daily-plan` live — @
-- [ ] `GET /api/analytics/mastery/me` exposed for M4's charts — @
-- [ ] `RecommendationCard` exported and rendering in M2's dashboard — @
-- [ ] Tier B: start `avatar-service` and confirm `/health` responds — @
-- [ ] Tier B: `POST /api/avatar/speak` returns a `video_stream_url` when the service is up — @
-- [ ] Tier B: frontend plays the JPEG frame stream against the audio clock — @
-- [ ] Tier B: app still falls back to Tier A cleanly when `AVATAR_SERVICE_URL` is empty — @
-- [ ] Short-answer AI grading endpoint (optional) — @
-- [ ] Voice mode (§6.6b, optional — cut first if behind): `POST /api/livekit/token` in the backend, guarded by `CurrentUser` — @
-- [ ] Voice mode: port `agent/reference-client/playground.html` into a React component — @
-- [ ] Voice mode: `AGENT_INSTRUCTIONS` rewritten as the tutor persona, `INPUT_LANGUAGE=en-US` — @
-
-### Week 4 — polish & integration
-- [ ] Time to first token under 2s on the running backend — @
-- [ ] Every AI call has a timeout, a retry, and a user-visible fallback message — @
-- [ ] App fully usable with the LLM key removed (no white screen) — @
-- [ ] Prompt tuning pass against real logged conversations — @
-- [ ] Demo script rehearsed (plan.md §10.2) — @
-- [ ] Integration support: unblocked M2, M3, M4 on their AI touchpoints — @
-
-### Definition of done (plan.md §6.9)
-- [ ] Tutor answers in the context of the current lesson and remembers earlier turns — @
-- [ ] Avatar mouth visibly in sync; idle animation runs — @
-- [ ] Generated quizzes render in M2's player unmodified — @
-- [ ] Weak topics update after a quiz and visibly change recommendations — @
-- [ ] `LLM_PROVIDER=mock` lets teammates run the app with no API key — @
+**Design:** all frontend work follows [docs/DESIGN_GUIDELINES.md](docs/DESIGN_GUIDELINES.md).
 
 ---
 
-## Member 2 — Learning Management
+# 🗓️ WEEK 1 — make the core loop real
 
-### Week 1 — UI kit + course browsing
-- [x] UI kit part 1: `Button`, `Card`, `Input`, `Select`, `Modal`, `Spinner` — scaffold, 2026-08-30
-- [~] UI kit part 2: `ProgressBar`, `Badge`, `EmptyState`, `Toast`, `Skeleton` done — scaffold, 2026-08-30 · **`Tabs` still missing**
-- [~] Tailwind tokens applied in `tailwind.config.js` + `index.css` — scaffold, 2026-08-30 · team sign-off pending
-- [ ] `/courses` catalog: grid, search, subject + difficulty filters — @
-- [ ] `/courses/:slug` detail: lesson list, completion ticks, progress ring — @
-- [ ] `POST /api/courses/{id}/enroll` + enrolled state in the UI — @
-- [ ] `/lessons/:id` viewer rendering seeded markdown — @
+## 🔵 Slot 1 · Member 1 · Days 1–2
 
-### Week 2 — quizzes and progress
-- [ ] `GET /api/quizzes/{id}` strips `correct_answer` and `explanation` — @
-- [ ] Quiz player: one question per screen, timer, answers persist across refresh — @
-- [ ] `POST /api/quizzes/attempts/{id}/submit` grades server-side — @
-- [ ] `attempt_answers` rows written with `topic_tag` copied from the question — @
-- [ ] `emit("quiz.submitted", ...)` fired on submit (M1 + M4 depend on it) — @
-- [ ] Result screen with per-question explanations + retake — @
-- [ ] `POST /api/lessons/{id}/progress` + 30s heartbeat time tracking — @
-- [ ] Auto "mark complete" at 90% scroll + manual button — @
-- [ ] `emit("lesson.completed", ...)` fired — @
-- [ ] **`/review` queue screen — the app's front door** — @
-- [ ] `/dashboard`: today's focus + what's due + then-vs-now (not a wall of charts) — @
+**AI misconception engine — the novel core.**
 
-### Week 3 — history, revision, mobile
-- [ ] `/history` timeline of lessons + attempts, filterable by course — @
-- [ ] "Ask the tutor about this" from a lesson text selection → M1's `/api/tutor/explain` — @
-- [ ] Revision flow driven by M1's recommendations — @
-- [ ] Dashboard assembles M1 recommendations + M4 XP/streak/challenge widgets — @
-- [ ] Responsive pass: everything usable at 375px — @
-- [ ] `EmptyState` on every list — @
+- [ ] Implement `services/mastery.py::capture_misconception()` — LLM names the
+      **false belief** behind a wrong answer in plain English — @, 2026-__-__
+- [ ] Reject invented misconceptions: if the model is unsure, store `None` — @, 2026-__-__
+- [ ] Register a `quiz.submitted` handler that calls it *(fires once M2 emits in Slot 2)* — @, 2026-__-__
+- [ ] `GET /api/mastery/me/misconceptions` — list with status active/fading/cleared — @, 2026-__-__
+- [ ] Decay: N correct answers moves active → fading → cleared — @, 2026-__-__
 
-### Week 4 — polish
-- [ ] Loading skeletons on every page — @
-- [ ] Error states on every fetch — @
-- [ ] Cross-browser check (Chrome, Firefox, Edge, mobile Safari) — @
-- [ ] Bug fixes from M4's test matrix — @
-
-### Definition of done (plan.md §7.5)
-- [ ] A new student can enroll → complete a lesson → take a quiz → see it in history — @
-- [ ] Progress percentages correct after refresh and on a second device — @
-- [ ] Correct answers never appear in the pre-submit network response — @
-- [ ] Every list has a loading skeleton and an empty state — @
-- [ ] Usable at 375px width — @
+**✅ Hand off when:** you can POST a wrong answer and see a misconception row written.
+**→ Push, then tell M2.**
 
 ---
 
-## Member 3 — User & Administration
+## 🟢 Slot 2 · Member 2 · Days 2–4
 
-### Week 1 — THE critical sprint (everyone is blocked on this)
-- [x] **Day 1:** Supabase project + `DATABASE_URL` documented & portable — @member3, 2026-09-03
-- [x] **Day 1:** `database.py`, `config.py`, Alembic initialised — @member3, 2026-09-03
-- [x] **Day 1:** `users`, `courses`, `lessons`, `enrollments` migrated (hand-write the `auth.users` FK) — @member3, 2026-09-03
-- [x] **Day 2:** Supabase Auth providers enabled (email + Google), keys configured/documented — @member3, 2026-09-03
-- [x] **Day 2:** `AuthContext` with email/password + Google sign-in — @member3, 2026-09-03
-- [x] **Day 2:** `api/client.js` axios instance with the Bearer token interceptor — scaffold, 2026-08-30 · includes 401 refresh-and-retry and the standard error shape
-- [x] **Day 3:** Supabase JWT verification in `deps.py` (`pyjwt` + `SUPABASE_JWT_SECRET`) — @member3, 2026-09-03
-- [x] **Day 3:** `get_current_user` auto-creates the `public.users` row on first login — @member3, 2026-09-03
-- [x] **Day 3:** `require_admin` returning 403 for students — scaffold, 2026-08-30 · verified; currently gates the dev stub user, works unchanged once Supabase Auth lands
-- [x] **Day 4:** **ONE course done properly — 6–8 real lessons, fully tagged, English.** SQL/DBMS recommended — @member3, 2026-09-03 · 7 real lessons with full markdown & vocabulary tags
-- [ ] Week 2: two thin courses (2–3 lessons each) so the catalogue is not a single item — @
-- [x] **Day 4:** `POST /api/uploads` — file handling for upload-your-own-notes (M1 does the splitting) — @member3, 2026-09-03
-- [x] **Day 5:** Course + lesson CRUD endpoints (with topic_tags validation) — @member3, 2026-09-03
-- [x] **Day 5:** Login / Register / Forgot-password pages — @member3, 2026-09-03
-- [x] `PrivateRoute` and `AdminRoute` wrappers — scaffold, 2026-08-30
+**⛔ FIRST: unblock the database.** Quiz + progress tables don't exist — the models
+are commented out in `models/__init__.py:3`, so they were never migrated.
 
-### Week 2 — admin panel & profile
-- [ ] Admin shell with sidebar navigation — @
-- [ ] Admin users table: search, filter by role, change role — @
-- [ ] Admin courses table + course editor (markdown + preview) — @
-- [ ] Drag-to-reorder lessons — @
-- [ ] Tag picker with autocomplete over existing tags — @
-- [ ] **Server-side rule: a lesson cannot be saved without a `topic_tag`** — @
-- [ ] `/profile` page: name, avatar, preferences (tone, daily goal, difficulty, timezone) — @
-- [ ] `emit("daily.login", ...)` on the first request of each day — @
+- [ ] Uncomment `from app.models import progress, quiz` — @, 2026-__-__
+- [ ] Create + run migration `0005_m2_quiz_progress_schema` — @, 2026-__-__
+- [ ] Verify `quizzes`, `quiz_questions`, `quiz_attempts`, `lesson_progress` exist — @, 2026-__-__
 
-### Week 3 — security & analytics wiring
-- [ ] Rate limiting on write endpoints — @
-- [ ] Input validation pass on every admin endpoint — @
-- [ ] No secrets committed anywhere in the repo history — @
-- [ ] Least-privilege / RLS review on Supabase — @
-- [ ] `POST /api/admin/upload` → Supabase Storage — @
-- [ ] `GET /api/admin/overview` counts wired to M4's charts — @
-- [ ] Token refresh on 401 with a single retry — @
+**Then make quizzes work** — nothing in the app has a game loop without this.
 
-### Week 4 — wrap up
-- [ ] Final seed: 5+ courses with full content — @
-- [ ] README + setup docs finalised — @
-- [ ] FastAPI `/docs` curated (tags, summaries, descriptions) — @
+- [ ] `GET /api/quizzes/{id}` — questions **with `correct_answer` stripped**
+      (security, plan.md 7.3 — never send answers to the client) — @, 2026-__-__
+- [ ] `POST /api/quizzes/{id}/attempts` — create attempt — @, 2026-__-__
+- [ ] `POST /api/quizzes/attempts/{id}/submit` — score + persist — @, 2026-__-__
+- [ ] **`emit(db, user_id, "quiz.submitted", {...})` on submit** — this is what
+      triggers M1's misconception capture *and* M4's XP — @, 2026-__-__
+- [ ] `QuizPlayer.jsx` — one question at a time, progress — @, 2026-__-__
+- [ ] `QuizResult.jsx` — score + per-question review — @, 2026-__-__
+- [ ] `GET /api/me/progress` — real *(M4 needs this in Slot 4)* — @, 2026-__-__
 
-### Definition of done (plan.md §8.7)
-- [ ] Register → login → refresh → still logged in — @
-- [ ] Student on an admin route gets 403 and sees no admin nav — @
-- [ ] Admin-created courses appear immediately in M2's catalog — @
-- [ ] Seed script rebuilds a full demo DB from empty in one command — @
-- [ ] Runs from a clean clone on another machine, and is usable on a phone — @
+**✅ Hand off when:** you can take a quiz, get a score, and M1's misconception
+appears for a wrong answer.
+**→ Push, then tell M3.**
 
 ---
 
-## Member 4 — Gamification & Analytics
+## 🟠 Slot 3 · Member 3 · Day 4–5
 
-### Week 1 — the event bus (the team is blocked on this too)
-- [x] **Day 1–2:** `services/events.py` with `register_handler()` / `on()` + `emit()` — @member4, 2026-09-07 · all event types declared, extensible, unit test suite verified
-- [x] **Every handler wrapped in try/except — a failing handler must never 500 the caller** — @member4, 2026-09-07 · verified in test_events.py with raising handler isolation
-- [x] `models/gamification.py`: all 7 tables + migration — @member4, 2026-09-07 · user_stats, xp_events, badges, user_badges, daily_challenges, user_challenges, notifications + migration 0002
-- [x] `services/xp_engine.py`: `award_xp()`, `update_streak()`, daily tutor cap, and event handlers wired — @member4, 2026-09-07 · unit test suite verified
-- [x] Every XP award writes an `xp_events` row — @member4, 2026-09-07 · verified in test_xp_engine.py
-- [x] Level curve `100 * n^1.5` implemented — scaffold, 2026-08-30 · verified L2=282, L5=1118, L10=3162
-- [x] `GET /api/me/stats` route wired to real `user_stats` read — @member4, 2026-09-07 · verified in test_integration_scenarios.py
-- [ ] `XPBar` + `StreakFlame` components exported for M2's dashboard — @
+**Auth — blocks every real demo.**
 
-### Week 2 — badges, streaks, leaderboard
-- [ ] Streak logic using the **user's local date**, not server UTC — @
-- [ ] `longest_streak` maintained — @
-- [ ] **Two** badges seeded (`first_lesson`, `streak_7`) — not fifteen — @
-- [ ] Data-driven badge checker running on every event — @
-- [ ] Celebration modal + confetti on badge earned (Framer Motion) — @
-- [ ] `/achievements` page: earned + locked with progress — @
-- [-] Leaderboard — **descoped** (demotivates everyone outside the top few). Build only if everything else is done — @
+- [ ] Enable **Google OAuth** in the Supabase dashboard (only `email` is on today —
+      verified via `/auth/v1/settings`) — @, 2026-__-__
+- [ ] Add redirect URLs for **both 5173 and 5174** (Vite falls back) — @, 2026-__-__
+- [ ] Verify sign-up creates a `public.users` row — @, 2026-__-__
+- [ ] `GET/PATCH /api/users/me` — @, 2026-__-__
+- [ ] `Profile.jsx` — name, email, avatar — @, 2026-__-__
 
-### Week 3 — challenges, charts, notifications
-- [-] Daily challenges — **descoped**, the review queue already does this job — @
-- [ ] (If kept) daily challenge template pool seeded — @
-- [ ] 3 challenges generated per day + progress via event handlers — @
-- [ ] `POST /api/challenges/{id}/claim` — @
-- [ ] "Practice a weak topic" challenge calling M1's `/api/recommendations` — @
-- [ ] **Then vs now** — their answer 3 weeks ago beside today's. Build this first — @
-- [ ] **Misconceptions resolved** count (from M1's `GET /api/me/misconceptions`) — @
-- [ ] `/stats`: weekly activity, XP over time, quiz accuracy trend — @
-- [ ] Topic mastery chart fed by M1's `/api/analytics/mastery/me` — @
-- [ ] Time-of-day pattern + course completion donuts — @
-- [ ] Notifications list + mark-as-read — @
-- [ ] Admin analytics: DAU/WAU, signups, course popularity, quiz difficulty — @
-
-### Week 4 — QA lead
-- [ ] Test matrix written out (plan.md §10.1) — @
-- [ ] All 10 matrix cases run and results recorded — @
-- [ ] Bugs filed with reproduction steps — @
-- [ ] Charts verified with 0 data, 1 day, and 8 weeks of data — @
-- [ ] Re-test after fixes — @
-
-### Definition of done (plan.md §9.11)
-- [ ] XP awarded exactly once per action (no double award on retry/refresh) — @
-- [ ] Streaks survive a timezone change and a midnight boundary — @
-- [ ] A badge earned mid-session celebrates without a page reload — @
-- [ ] Charts render sensibly at 0 / 1 day / 8 weeks of data — @
-- [ ] A raising handler does not break the caller's request — @
+**✅ Hand off when:** a stranger can sign up with Google and see their profile.
+**→ Push, then tell M4.**
 
 ---
 
-## Weekly checkpoints (plan.md §5)
+## 🟣 Slot 4 · Member 4 · Day 5
 
-- [ ] **End W1:** login works · a real course renders from the DB · the tutor answers one question — @
-- [ ] **End W2:** **the core loop** — a wrong free-response answer produces a correct misconception sentence, and the tutor explains it. The week that matters — @
-- [ ] **End W3:** app opens to the review queue · missed topics return on schedule · upload works · avatar delivers the feedback — @
-- [ ] **End W4:** seeded, demoed, handed to the lead for deployment — @
+**Dashboard — the first screen after login, currently blank.**
+
+- [ ] XP + level + progress bar — `GET /api/me/stats` *(already real)* — @, 2026-__-__
+- [ ] Streak counter *(already real)* — @, 2026-__-__
+- [ ] "Continue learning" — uses M2's `/api/me/progress` — @, 2026-__-__
+- [ ] "Next quest" — `GET /api/roadmap/me` *(already real)* — @, 2026-__-__
+- [ ] Wire header streak/XP in `AppLayout.jsx` to real values (hardcoded `0` today) — @, 2026-__-__
+
+**✅ Week 1 is done when:** sign up → dashboard shows real numbers → take a quiz →
+get one wrong → the app names your misconception.
 
 ---
 
-## Integration week (plan.md §10)
+# 🗓️ WEEK 2 — the novel feature + fill the gaps
 
-- [ ] **Mon:** full happy-path walkthrough on staging, every break listed — @
-- [ ] **Tue:** P0 fixes (auth edge cases, event double-fires, quiz payload mismatches) — @
-- [ ] **Wed:** performance (N+1 queries, indexes, lazy-load avatar bundle, image sizes) — @
-- [ ] **Thu:** final seed, mobile pass, backup demo video recorded — @
-- [ ] **Fri:** documentation, report, presentation dry run — @
+## 🔵 Slot 5 · Member 1 · Days 6–8
+
+**SyncTalk photoreal tutor + Teach-Back — the demo moment.**
+
+⚠️ The current Tier B code is **wrong**: `AvatarStage.jsx` renders the stream as
+`<img src>` (MJPEG), but the server sends framed binary over WebSocket:
+`[4B segment][4B frame_idx][4B total][4B audio_ms] + JPEG`.
+
+- [ ] WS client: decode binary frames → `<canvas>` — @, 2026-__-__
+- [ ] Sync the PCM audio segments to the frames — @, 2026-__-__
+- [ ] Fall back to the SVG avatar when `AVATAR_SERVICE_URL` is unset or down — @, 2026-__-__
+- [ ] **Teach-Back:** seed Nova with the student's own misconception — @, 2026-__-__
+- [ ] Nova asks naive questions and pushes back on vague answers — @, 2026-__-__
+- [ ] **Nova re-takes the question — its score is the student's grade** — @, 2026-__-__
+- [ ] On success mark the misconception `fading` + award XP via `emit()` — @, 2026-__-__
+
+**✅ Hand off when:** the full loop runs — wrong answer → misconception → teach
+Nova → Nova passes.
+**→ Push, then tell M2.**
+
+---
+
+## 🟢 Slot 6 · Member 2 · Days 8–10
+
+**Courses in HackerRank shape.**
+
+- [ ] Restructure catalogue as **Tracks → Skills → Problems** — @, 2026-__-__
+- [ ] Difficulty chips (Easy/Medium/Hard) via `Badge tone=` — @, 2026-__-__
+- [ ] Solve % + attempt count per skill — @, 2026-__-__
+- [ ] Use `.table-dense` rows, not big cards — @, 2026-__-__
+- [ ] Filters: subject, difficulty, status, search — @, 2026-__-__
+- [ ] `GET /api/me/history` — real *(M4 needs it next)* — @, 2026-__-__
+
+**✅ Hand off when:** the courses page looks like a practice platform, not a shop.
+**→ Push, then tell M3.**
+
+---
+
+## 🟠 Slot 7 · Member 3 · Day 10–11
+
+**Admin panel.**
+
+- [ ] `AdminOverview.jsx` — user/course/activity counts — @, 2026-__-__
+- [ ] `AdminCourses.jsx` — create / edit / publish a course — @, 2026-__-__
+- [ ] `GET /api/admin/overview` — real numbers — @, 2026-__-__
+- [ ] Confirm `DEV_ALLOW_ANONYMOUS=false` anywhere deployed — @, 2026-__-__
+
+**→ Push, then tell M4.**
+
+---
+
+## 🟣 Slot 8 · Member 4 · Days 11–12
+
+**Fill every remaining dead page.**
+
+- [ ] `GET /api/leaderboard` — real → `Leaderboard.jsx` (`.table-dense`) — @, 2026-__-__
+- [ ] Seed badges + `GET /api/me/badges` → `Achievements.jsx` — @, 2026-__-__
+- [ ] `GET /api/mastery/me` → `Stats.jsx` + **misconception map** (M1's API) — @, 2026-__-__
+- [ ] `History.jsx` from M2's `/api/me/history` — @, 2026-__-__
+
+**✅ Hand off when:** no nav link is a dead end.
+
+---
+
+## 🔴 Days 13–14 · Everyone · Integration & demo
+
+- [ ] Run the full demo script below, start to finish, three times — @, 2026-__-__
+- [ ] Fix whatever breaks — @, 2026-__-__
+- [ ] Seed a clean database for the presentation — @, 2026-__-__
+- [ ] Rehearse the 5-minute demo — @, 2026-__-__
+
+---
+
+## 🎬 Demo script
+
+1. Sign up → state a goal → **AI draws a branching roadmap** from the real catalogue
+2. Open a lesson → take a quiz → **get one wrong**
+3. Screen names **the false belief**, not just "incorrect"
+4. **Nova appears — photoreal — holding that same wrong belief**
+5. Student talks her out of it
+6. **Nova re-takes the question and passes** → XP → roadmap re-plans
+
+---
+
+## Already working (don't rebuild)
+
+Landing · Login/Register · Courses list · Course detail · Lesson viewer ·
+AI Tutor chat · **AI Roadmap** · XP engine · DB with 3 courses / 15 lessons ·
+Professional design system
+
+---
+
+## Cut to fit two weeks
+
+- [-] Practice problems with a code editor and test cases — big build; the quiz
+      loop already demonstrates practice
+- [-] Daily challenges + notifications — nice-to-have, not on the demo path
+- [-] Spaced-repetition review queue (`review_items`) — the roadmap already
+      handles "what next"
+- [-] Upload-your-own-notes → course pipeline
+- [-] Duolingo-style playful design — replaced 2026-09-21 with the professional system
 
 ---
 
 ## Blockers
 
-> Add a line here the moment you are stuck for more than half a day. Remove it when resolved.
+> Add a line the moment you are stuck. Do not stall silently — the next person
+> in the relay is waiting on you.
 
-| Date | Who | Blocked on | Needs | Status |
-| --- | --- | --- | --- | --- |
-| | | | | |
-
----
-
-## Scope cuts
-
-> Anything moved to `[-]` above gets a line here so it is a decision, not a gap.
-> Cut order is in plan.md §12.
-
-| Date | Item | Reason | Decided by |
-| --- | --- | --- | --- |
-| | | | |
+- [ ] *(none logged)*

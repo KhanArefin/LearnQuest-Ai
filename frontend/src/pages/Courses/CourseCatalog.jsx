@@ -39,7 +39,7 @@ const DIFFICULTY_OPTIONS = [
 function getDifficultyTone(difficulty) {
   switch (difficulty?.toLowerCase()) {
     case 'beginner':
-      return 'success';
+      return 'easy';
     case 'intermediate':
       return 'warning';
     case 'advanced':
@@ -250,7 +250,7 @@ export default function CourseCatalog() {
                           {course.difficulty || 'beginner'}
                         </Badge>
                       </div>
-                      {isEnrolled && <Badge tone="success">Enrolled</Badge>}
+                      {isEnrolled && <Badge tone="easy">Enrolled</Badge>}
                     </div>
                     <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                       {course.title}

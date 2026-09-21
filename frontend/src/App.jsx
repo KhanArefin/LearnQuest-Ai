@@ -6,12 +6,13 @@
  * All four members' route groups are registered here already so nobody has to
  * touch this file again. Build inside your own pages/ folder instead.
  */
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 
 import AppLayout from './components/layout/AppLayout';
 import PrivateRoute from './components/layout/PrivateRoute';
 import AdminRoute from './components/layout/AdminRoute';
 import NotFound from './pages/NotFound';
+import Landing from './pages/Landing/Landing';
 
 // --- Member 3: auth, profile, admin ---
 import Login from './pages/Auth/Login';
@@ -33,6 +34,7 @@ import History from './pages/History/History';
 
 // --- Member 1: tutor & avatar ---
 import TutorPage from './pages/Tutor/TutorPage';
+import RoadmapPage from './pages/Roadmap/RoadmapPage';
 
 // --- Member 4: gamification & analytics ---
 import Achievements from './pages/Achievements/Achievements';
@@ -42,6 +44,10 @@ import Stats from './pages/Stats/Stats';
 export default function App() {
   return (
     <Routes>
+      {/* public landing page - the app's front door.
+          Landing itself redirects signed-in visitors to /dashboard. */}
+      <Route path="/" element={<Landing />} />
+
       {/* public - Member 3 */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
@@ -55,8 +61,6 @@ export default function App() {
           </PrivateRoute>
         }
       >
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
         {/* Member 2 */}
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/courses" element={<CourseCatalog />} />
@@ -67,6 +71,7 @@ export default function App() {
         <Route path="/history" element={<History />} />
 
         {/* Member 1 */}
+        <Route path="/roadmap" element={<RoadmapPage />} />
         <Route path="/tutor" element={<TutorPage />} />
         <Route path="/tutor/:conversationId" element={<TutorPage />} />
 

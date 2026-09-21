@@ -9,8 +9,14 @@ export const sendMessage = (conversationId, content) =>
   client.post(`/api/tutor/conversations/${conversationId}/messages`, { content });
 export const deleteConversation = (conversationId) =>
   client.delete(`/api/tutor/conversations/${conversationId}`);
-export const explain = (lessonId, selection) =>
-  client.post('/api/tutor/explain', { lesson_id: lessonId, selection });
+/**
+ * Explain a highlighted excerpt from a lesson.
+ * `selection` is the text the student highlighted; `question` is what they
+ * typed, if anything. They are separate fields because the backend prompt
+ * frames `selection` as "the excerpt the student highlighted".
+ */
+export const explain = (lessonId, selection, question) =>
+  client.post('/api/tutor/explain', { lesson_id: lessonId, selection, question });
 
 /**
  * SSE token stream. EventSource cannot send an Authorization header, so pass the

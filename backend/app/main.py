@@ -24,6 +24,7 @@ from app.routers import (
     progress,
     quizzes,
     recommendations,
+    roadmap,
     tutor,
     users,
 )
@@ -48,6 +49,7 @@ app = FastAPI(
         {"name": "progress", "description": "Lesson progress and learning history. (M2)"},
         {"name": "quizzes", "description": "Quiz attempts (M2) and AI generation (M1)."},
         {"name": "tutor", "description": "AI tutor conversations. (M1)"},
+        {"name": "roadmap", "description": "AI-generated learning roadmaps. (M1)"},
         {"name": "avatar", "description": "Avatar speech and lipsync payloads. (M1)"},
         {"name": "recommendations", "description": "Personalized recommendations. (M1)"},
         {"name": "gamification", "description": "XP, badges, streaks, challenges. (M4)"},
@@ -71,6 +73,7 @@ app.include_router(courses.router)           # M3 writes / M2 reads
 app.include_router(lessons.router)           # M2
 app.include_router(progress.router)          # M2
 app.include_router(quizzes.router)           # M2 attempts + M1 generation
+app.include_router(roadmap.router)           # M1
 app.include_router(tutor.router)             # M1
 app.include_router(avatar.router)            # M1
 app.include_router(recommendations.router)   # M1
@@ -103,3 +106,12 @@ def _startup() -> None:
         logger.warning("LLM_PROVIDER=mock - the tutor returns canned responses.")
     if settings.dev_allow_anonymous and settings.is_production:
         logger.error("DEV_ALLOW_ANONYMOUS is true in production. Turn it off.")
+
+
+@app.on_event("shutdown")
+async def _shutdown() -> None:
+    """Close the pooled LLM HTTP client so connections drain cleanly."""
+    from app.services.llm_client import close_http_client
+
+    await close_http_client()
+    logger.info("LearnQuest AI shut down cleanly")

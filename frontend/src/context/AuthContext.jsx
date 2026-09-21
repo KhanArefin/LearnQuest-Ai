@@ -122,25 +122,39 @@ export function AuthProvider({ children }) {
       }
     });
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (!isMounted) return;
-      const appUser = toAppUser(data.session);
-      if (appUser) {
-        setUser(appUser);
-        setLoading(false);
-        syncWithBackend(appUser);
-      } else if (!hasAuthRedirectInUrl) {
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!isMounted) return;
+        const appUser = toAppUser(data.session);
+        if (appUser) {
+          setUser(appUser);
+          setLoading(false);
+          syncWithBackend(appUser);
+        } else if (!hasAuthRedirectInUrl) {
+          setUser(null);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        // A stored session whose token has expired makes getSession() call
+        // Supabase to refresh it. If the project is paused, deleted or simply
+        // offline that request rejects - and without this catch nothing ever
+        // cleared `loading`, so the whole app sat on a spinner forever.
+        // Failing to restore a session means "signed out", not "wait".
+        if (!isMounted) return;
+        console.warn('Could not restore session; continuing signed out.', err);
         setUser(null);
         setLoading(false);
-      }
-    });
+      });
 
-    let timeoutId;
-    if (hasAuthRedirectInUrl) {
-      timeoutId = setTimeout(() => {
-        if (isMounted) setLoading(false);
-      }, 4000);
-    }
+    // Unconditional safety net. Previously this only armed on the OAuth
+    // redirect path, so an ordinary page load had nothing to fall back on if
+    // the auth call hung rather than rejected.
+    const timeoutId = setTimeout(() => {
+      if (!isMounted) return;
+      setLoading(false);
+    }, hasAuthRedirectInUrl ? 4000 : 6000);
 
     return () => {
       isMounted = false;

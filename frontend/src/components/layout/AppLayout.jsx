@@ -1,76 +1,133 @@
 /** Authenticated app shell. OWNER: Member 3. */
 import { NavLink, Outlet } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  Map,
+  BookOpen,
+  Sparkles,
+  Shield,
+  LogOut,
+} from 'lucide-react';
 
 import { useAuth } from '../../context/AuthContext';
 
+/**
+ * Shell follows the system's shape (docs/DESIGN_GUIDELINES.md): a top bar for
+ * identity and status, a compact left rail for navigation. Dense, flat, and
+ * quiet - navigation should recede so the content reads.
+ */
 const NAV = [
-  { to: '/dashboard', label: 'Dashboard' },
-  { to: '/courses', label: 'Courses' },
-  { to: '/tutor', label: 'AI Tutor' },
-  { to: '/achievements', label: 'Achievements' },
-  { to: '/leaderboard', label: 'Leaderboard' },
-  { to: '/stats', label: 'Stats' },
-  { to: '/history', label: 'History' },
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/roadmap', label: 'Roadmap', icon: Map },
+  { to: '/courses', label: 'Courses', icon: BookOpen },
+  { to: '/tutor', label: 'AI Tutor', icon: Sparkles },
 ];
+
+// Restore these as each one is built (routes already exist in App.jsx):
+//   { to: '/achievements', label: 'Achievements', icon: Trophy }
+//   { to: '/stats',        label: 'Stats',        icon: BarChart3 }
+//   { to: '/history',      label: 'History',      icon: HistoryIcon }
+//   { to: '/practice',     label: 'Practice',     icon: Code2 }
+// A nav link to a placeholder page is a dead end; one to a missing route 404s.
+
+const MOBILE_NAV = NAV.slice(0, 5);
+
+function initialsOf(name) {
+  if (!name) return 'ME';
+  return name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]).join('').toUpperCase();
+}
 
 export default function AppLayout() {
   const { user, isAdmin, devMode, logout } = useAuth();
 
+  const railLink = ({ isActive }) =>
+    `flex items-center gap-2.5 rounded px-3 py-2 text-sm transition-colors ${
+      isActive
+        ? 'bg-primary-50 font-medium text-primary-700 dark:bg-primary-900/25 dark:text-primary-300'
+        : 'text-muted hover:bg-canvas hover:text-body dark:hover:bg-[#1C222B] dark:hover:text-white'
+    }`;
+
+  const tabLink = ({ isActive }) =>
+    `flex flex-1 flex-col items-center gap-0.5 rounded px-1 py-1.5 text-2xs transition-colors ${
+      isActive ? 'text-primary-700 dark:text-primary-400' : 'text-muted'
+    }`;
+
   return (
     <div className="min-h-full">
       {devMode && (
-        <div className="bg-amber-500 px-4 py-1.5 text-center text-xs font-medium text-amber-950">
-          Dev mode - Supabase is not configured. Auth is stubbed (plan.md 8.2).
+        <div className="border-b border-medium/30 bg-medium-bg px-4 py-1 text-center text-2xs font-medium text-medium-fg">
+          Dev mode — signed in as a local test user
         </div>
       )}
 
-      <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-        <div className="mx-auto flex max-w-7xl items-center gap-6 px-4 py-3">
-          <NavLink to="/dashboard" className="text-lg font-bold text-primary-600">
-            LearnQuest
+      <header className="sticky top-0 z-30 border-b border-line bg-surface dark:border-[#242B35] dark:bg-[#171C23]">
+        <div className="mx-auto flex max-w-[1400px] items-center gap-4 px-4 py-2">
+          <NavLink to="/dashboard" className="flex shrink-0 items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded bg-primary-600 text-white">
+              <Sparkles className="h-4 w-4" />
+            </span>
+            <span className="text-base font-semibold text-ink dark:text-white">LearnQuest</span>
           </NavLink>
 
-          <nav className="hidden gap-1 md:flex">
-            {NAV.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  `rounded-lg px-3 py-1.5 text-sm transition-colors ${
-                    isActive
-                      ? 'bg-primary-50 font-medium text-primary-700 dark:bg-primary-900/40 dark:text-primary-200'
-                      : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
-                  }`
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-            {isAdmin && (
-              <NavLink
-                to="/admin"
-                className="rounded-lg px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-              >
-                Admin
-              </NavLink>
-            )}
-          </nav>
-
           <div className="ml-auto flex items-center gap-3">
-            {/* TODO(M4): drop <XPBar /> and <StreakFlame /> in here. */}
-            <NavLink to="/profile" className="text-sm text-slate-600 dark:text-slate-300">
-              {user?.full_name ?? 'Profile'}
+            {/* TODO(M4): streak + XP chips go here, wired to /api/me/stats.
+                Deliberately absent until they show real numbers. */}
+
+            <NavLink
+              to="/profile"
+              title={user?.full_name ?? 'Profile'}
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-canvas text-2xs font-semibold text-muted transition-colors hover:bg-line dark:bg-[#1C222B]"
+            >
+              {initialsOf(user?.full_name)}
             </NavLink>
-            <button onClick={logout} className="text-sm text-slate-500 hover:text-slate-900">
-              Sign out
+
+            <button
+              type="button"
+              onClick={logout}
+              title="Sign out"
+              className="flex h-7 w-7 items-center justify-center rounded text-faint transition-colors hover:bg-canvas hover:text-hard dark:hover:bg-[#1C222B]"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="sr-only">Sign out</span>
             </button>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-6">
-        <Outlet />
-      </main>
+      <div className="mx-auto flex max-w-[1400px] gap-6 px-4 py-5">
+        <nav className="sticky top-[3.25rem] hidden h-fit w-48 shrink-0 flex-col gap-0.5 lg:flex">
+          {NAV.map(({ to, label, icon: Icon }) => (
+            <NavLink key={to} to={to} className={railLink}>
+              <Icon className="h-4 w-4 shrink-0" />
+              {label}
+            </NavLink>
+          ))}
+          {isAdmin && (
+            <>
+              <span className="label mt-4 px-3">Admin</span>
+              <NavLink to="/admin" className={railLink}>
+                <Shield className="h-4 w-4 shrink-0" />
+                Overview
+              </NavLink>
+            </>
+          )}
+        </nav>
+
+        <main className="min-w-0 flex-1 pb-20 lg:pb-0">
+          <Outlet />
+        </main>
+      </div>
+
+      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface px-2 py-1 lg:hidden dark:border-[#242B35] dark:bg-[#171C23]">
+        <div className="mx-auto flex max-w-lg items-center">
+          {MOBILE_NAV.map(({ to, label, icon: Icon }) => (
+            <NavLink key={to} to={to} className={tabLink}>
+              <Icon className="h-4 w-4" />
+              {label}
+            </NavLink>
+          ))}
+        </div>
+      </nav>
     </div>
   );
 }

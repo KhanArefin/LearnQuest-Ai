@@ -84,7 +84,7 @@ export default function Register() {
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12 dark:bg-slate-950 sm:px-6 lg:px-8">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-md">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-md">
             <Sparkles className="h-7 w-7" />
           </div>
           <h2 className="mt-4 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">

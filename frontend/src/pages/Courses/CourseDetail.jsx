@@ -20,7 +20,7 @@ import {
 function getDifficultyTone(difficulty) {
   switch (difficulty?.toLowerCase()) {
     case 'beginner':
-      return 'success';
+      return 'easy';
     case 'intermediate':
       return 'warning';
     case 'advanced':
@@ -177,7 +177,7 @@ export default function CourseDetail() {
       </div>
 
       {/* Course Hero Banner */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 sm:p-8">
+      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 sm:p-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl space-y-4">
             <div className="flex flex-wrap items-center gap-2">
@@ -185,7 +185,7 @@ export default function CourseDetail() {
               <Badge tone={getDifficultyTone(course.difficulty)}>
                 {course.difficulty || 'beginner'}
               </Badge>
-              {isEnrolled && <Badge tone="success">Enrolled</Badge>}
+              {isEnrolled && <Badge tone="easy">Enrolled</Badge>}
             </div>
 
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50 sm:text-3xl">

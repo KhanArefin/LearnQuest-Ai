@@ -201,3 +201,6 @@ Detailed folder-by-folder ownership is in [plan.md](plan.md) §1.
 - Never edit a file another member owns — ask them or open a PR they review.
 - Shared files (`main.py`, `App.jsx`, `client.js`, `components/ui/*`) change only by agreement.
 - Update [CHECKLIST.md](CHECKLIST.md) in the same PR as the work it describes.
+- **Any frontend work follows [docs/DESIGN_GUIDELINES.md](docs/DESIGN_GUIDELINES.md).**
+  LearnQuest uses a Duolingo-style design language — read it before building a
+  page or component, and run its PR checklist before opening a review.

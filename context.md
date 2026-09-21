@@ -27,11 +27,15 @@ Software Development Project
 
 # 1. Project Overview
 
-LearnQuest AI is a web-based learning platform that provides students with a personalized educational experience through an AI-powered tutor represented by a real-time animated avatar.
+LearnQuest AI is a web-based learning platform built on a single idea:
 
-Instead of following a fixed learning path, students receive personalized recommendations, AI-generated quizzes, adaptive lessons, and continuous progress tracking. The platform also incorporates gamification elements such as XP, badges, achievements, and daily challenges to keep learners motivated.
+> **A tutor that models the student's mind, not just their score.**
 
-Unlike traditional learning management systems, LearnQuest AI combines conversational AI, adaptive learning, and an expressive avatar tutor into one seamless learning experience.
+Conventional platforms record *whether* an answer was wrong. LearnQuest infers **why** — it identifies the underlying false belief, states it in plain English, and stores it as a tracked misconception. It then does something no mainstream platform does: it **inverts the tutoring relationship**. A photoreal AI tutor is seeded with the student's own misconception, and the student must explain them out of it. The tutor's subsequent score on the same question becomes the student's grade.
+
+This is grounded in the *protégé effect*, a well-documented finding in education research: people learn more preparing to teach, and more still when teaching, than when studying for themselves.
+
+Around that core the platform provides an AI-generated learning roadmap, adaptive lessons, AI-generated quizzes, practice problems, and progress tracking, with gamification (XP, badges, streaks, challenges) to sustain motivation.
 
 The application is designed to be completely web-based and built using free and open-source technologies wherever possible.
 
@@ -135,8 +139,19 @@ The tutor appears as a real-time animated avatar capable of speaking naturally w
 - Personalized interactions
 - Topic explanations
 - Study guidance
+- **Teach-Back mode** - the student teaches the tutor (see 6.10)
 
-The avatar will be implemented using our own avatar pipeline powered by **SyncTalk** for real-time facial animation and lip synchronization instead of third-party avatar frameworks.
+The avatar uses our own pipeline powered by **SyncTalk**, a trained audio-driven
+talking-head model, rather than a third-party avatar framework. The service
+streams rendered frames over a WebSocket alongside synchronised audio.
+
+Two tiers are supported so the platform never hard-depends on a GPU:
+
+- **Tier A (always available):** an animated SVG avatar driven by a viseme
+  timeline, running entirely in the browser.
+- **Tier B (when a GPU host is configured):** the SyncTalk model streaming a
+  photoreal face. The UI falls back to Tier A automatically if the service is
+  unreachable.
 
 ---
 
@@ -223,6 +238,73 @@ Administrator can
 - Upload Learning Materials
 - View Analytics
 - Monitor Platform Usage
+
+---
+
+## 6.10 Misconception Engine and Teach-Back *(novel contribution)*
+
+This is the platform's research claim and its main point of difference.
+
+### 6.10.1 Error Autopsy
+
+When an answer is wrong, the system does not stop at "incorrect". An LLM is asked
+to infer the **false belief** that produced the answer and to state it in plain
+English, for example:
+
+> *You believe "FULL JOIN" returns only rows present in both tables. "Full"
+> actually means keep every row from both sides, matched or not.*
+
+The misconception is stored against the topic (`topic_mastery.misconception`),
+tracked over time, and decays through **active → fading → cleared** as the
+student answers correctly. If the model cannot identify a belief with confidence,
+nothing is stored - inventing a misconception is worse than recording none.
+
+### 6.10.2 Teach-Back ("Teach Nova")
+
+The tutoring relationship is then inverted. The avatar is seeded with the
+student's *own* misconception and presents it as its own confusion. It asks naive
+questions and pushes back when an explanation is vague. The student must talk it
+out of the mistake.
+
+The avatar then re-attempts the original question, and **its score becomes the
+student's grade**. The student is assessed on how well they taught, not on how
+well they guessed.
+
+### 6.10.3 Why this is novel
+
+Existing platforms (Duolingo, HackerRank, Khan Academy) model a single mastery
+score per topic and deliver explanations *to* the learner. Modelling the *causes*
+of error, and using a photoreal agent as a deliberately flawed protégé, is not
+offered by any mainstream system. The pairing is what makes it work: arguing with
+a face that looks confused is a materially different experience from typing into
+a chat box.
+
+---
+
+## 6.11 AI Learning Roadmap
+
+Rather than a fixed curriculum, each student states a goal ("become backend-ready
+in eight weeks") and receives a generated roadmap.
+
+- The planner is **grounded in the real catalogue**: it may only select and order
+  lessons that actually exist. Any invented topic is discarded before the plan is
+  stored, so a hallucinated skill can never reach a student.
+- The result is a **directed acyclic graph**, not a list - independent tracks can
+  run in parallel and nodes unlock as their prerequisites complete.
+- The roadmap **re-plans** as mastery changes and as misconceptions are detected,
+  inserting remediation where the student is weak.
+- If the model is unavailable, a deterministic fallback orders the catalogue by
+  curriculum sequence, and the UI states plainly that the AI planner did not run.
+
+The interface is a branching skill map in the style of roadmap.sh.
+
+---
+
+## 6.12 Practice Problems
+
+Structured in the style of HackerRank: **Tracks → Skills → Problems**, each
+problem carrying a difficulty label, solve rate, and completion status, with
+skill verification once enough problems are solved.
 
 ---
 

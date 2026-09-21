@@ -200,9 +200,12 @@ export default function LessonViewer() {
 
   // 5. "Ask the tutor about this" handler
   const handleOpenTutor = () => {
-    const sel = window.getSelection()?.toString()?.trim();
-    setSelectedText(sel || '');
-    setTutorQuery(sel ? `Explain this concept: "${sel}"` : `Can you explain the main idea of ${lesson?.title || 'this lesson'}?`);
+    const sel = window.getSelection()?.toString()?.trim() || '';
+    setSelectedText(sel);
+    // The question box starts empty when there is a highlight: the excerpt is
+    // already the subject, so pre-filling it with "Explain this concept: ..."
+    // only gave the student something to delete.
+    setTutorQuery(sel ? '' : `Explain the main idea of ${lesson?.title || 'this lesson'}`);
     setTutorResponse(null);
     setTutorError(null);
     setTutorModalOpen(true);
@@ -210,23 +213,42 @@ export default function LessonViewer() {
 
   const handleAskTutorSubmit = async (e) => {
     e?.preventDefault();
-    if (!tutorQuery.trim()) return;
+
+    const question = tutorQuery.trim();
+    // With a highlight the excerpt alone is a valid request, so only demand a
+    // typed question when there is nothing highlighted.
+    if (!question && !selectedText) return;
 
     setTutorLoading(true);
     setTutorError(null);
+    setTutorResponse(null);
 
     try {
-      const res = await explain(currentLessonId, tutorQuery);
-      setTutorResponse(
-        res?.explanation ||
-          res?.reply ||
-          'The AI Tutor has noted your question. Click below to continue in the full Tutor chat.'
-      );
+      // `selection` is the excerpt the student highlighted - the backend prompt
+      // says "a student highlighted the following". Sending the typed question
+      // here told the model they had highlighted their own question.
+      const res = await explain(currentLessonId, selectedText || question, question);
+      const explanation = res?.explanation ?? res?.reply;
+
+      if (typeof explanation === 'string' && explanation.trim()) {
+        setTutorResponse(explanation.trim());
+      } else {
+        // Previously this fell back to a cheerful placeholder, so an empty or
+        // unexpected payload looked exactly like a real answer.
+        setTutorError('The tutor returned an empty response. Please try again.');
+      }
     } catch (err) {
-      console.info('Tutor explain endpoint fallback:', err);
-      setTutorResponse(
-        'The AI Tutor is ready to answer your question in the full tutor interface.'
-      );
+      // This used to swallow every failure and show a fake answer, which made
+      // auth, network and server errors indistinguishable from easy.
+      // api/client.js normalises rejections to { status, detail, code }.
+      const { status, detail, code } = err || {};
+      if (status === 401 || status === 403) {
+        setTutorError('Your session has expired. Sign in again to ask the tutor.');
+      } else if (status === 0 || code === 'NETWORK_ERROR') {
+        setTutorError('Could not reach the tutor. Check that the server is running, then try again.');
+      } else {
+        setTutorError(detail || `The tutor request failed (${status ?? 'unknown error'}).`);
+      }
     } finally {
       setTutorLoading(false);
     }
@@ -292,7 +314,7 @@ export default function LessonViewer() {
 
         <div className="flex items-center gap-3">
           {isCompleted ? (
-            <Badge tone="success">✓ Completed</Badge>
+            <Badge tone="easy">✓ Completed</Badge>
           ) : (
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <span>{scrollProgress}% read</span>
@@ -302,12 +324,7 @@ export default function LessonViewer() {
             </div>
           )}
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleOpenTutor}
-            className="border border-primary-200 bg-primary-50/50 text-primary-700 hover:bg-primary-100 dark:border-primary-900 dark:bg-primary-950/40 dark:text-primary-300"
-          >
+          <Button variant="secondary" size="sm" onClick={handleOpenTutor}>
             ✨ Ask the tutor about this
           </Button>
         </div>
@@ -345,7 +362,7 @@ export default function LessonViewer() {
 
           {/* Video Embed (if available) */}
           {lesson.video_url && (
-            <div className="aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-sm">
+            <div className="aspect-video w-full overflow-hidden rounded-lg bg-black shadow-sm">
               {lesson.video_url.includes('youtube.com') ||
               lesson.video_url.includes('youtu.be') ? (
                 <iframe
@@ -555,24 +572,17 @@ export default function LessonViewer() {
             )}
 
             {/* Tutor Shortcut Card */}
-            <Card className="bg-gradient-to-br from-primary-500/5 to-indigo-500/10 p-5 dark:from-primary-950/30 dark:to-slate-900/50">
+            <Card className="bg-primary-50 p-5 dark:bg-primary-900/20">
               <div className="space-y-2">
-                <span className="text-xs font-semibold text-primary-600 dark:text-primary-400">
-                  Personal AI Tutor
+                <span className="label text-primary-700 dark:text-primary-300">
+                  Personal AI tutor
                 </span>
-                <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  Need clarification?
-                </h4>
-                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Highlight any text on the page and click below to ask the tutor for a personalized breakdown.
+                <h4 className="text-base font-semibold">Need clarification?</h4>
+                <p className="text-xs font-semibold leading-relaxed text-muted dark:text-[#8A94A2]">
+                  Highlight any text on the page, then ask Nova to break it down for you.
                 </p>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={handleOpenTutor}
-                  className="w-full mt-2"
-                >
-                  Ask Tutor About Lesson
+                <Button size="sm" onClick={handleOpenTutor} className="mt-2 w-full">
+                  Ask about this lesson
                 </Button>
               </div>
             </Card>
@@ -638,52 +648,70 @@ export default function LessonViewer() {
       >
         <div className="space-y-4">
           {selectedText && (
-            <div className="rounded-lg bg-slate-100 p-3 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-l-2 border-primary-500">
-              <p className="font-semibold text-slate-500 dark:text-slate-400 mb-1">
-                Selected Text:
+            <div className="rounded-lg border-2 border-info/30 bg-info-bg p-3.5">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-info-fg">
+                Highlighted from the lesson
               </p>
-              <p className="italic line-clamp-3">"{selectedText}"</p>
+              <p className="line-clamp-4 text-sm font-semibold italic text-body">
+                “{selectedText}”
+              </p>
             </div>
           )}
 
           <form onSubmit={handleAskTutorSubmit} className="space-y-3">
             <label
               htmlFor="tutor-question"
-              className="block text-xs font-medium text-slate-600 dark:text-slate-400"
+              className="block text-xs font-semibold uppercase tracking-wide text-muted dark:text-[#8A94A2]"
             >
-              Your Question:
+              {selectedText ? 'Your question (optional)' : 'Your question'}
             </label>
             <textarea
               id="tutor-question"
               rows={3}
               value={tutorQuery}
               onChange={(e) => setTutorQuery(e.target.value)}
-              placeholder="What would you like the tutor to explain about this lesson?"
-              className="w-full rounded-xl border border-slate-300 p-3 text-sm focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+              placeholder={
+                selectedText
+                  ? 'Ask something specific, or leave blank to just have this explained'
+                  : 'What would you like the tutor to explain about this lesson?'
+              }
+              className="field resize-none"
             />
             <div className="flex justify-end">
               <Button
-                variant="primary"
                 size="sm"
                 loading={tutorLoading}
                 type="submit"
+                disabled={!tutorQuery.trim() && !selectedText}
               >
-                Explain
+                {tutorLoading ? 'Thinking' : 'Explain'}
               </Button>
             </div>
           </form>
 
           {tutorResponse && (
-            <div className="rounded-xl border border-primary-100 bg-primary-50/50 p-4 text-sm text-slate-800 dark:border-primary-900/40 dark:bg-primary-950/30 dark:text-slate-200">
-              <p className="font-semibold text-primary-700 dark:text-primary-300 mb-1">
-                Tutor Explanation:
+            <div className="animate-fade-in rounded-lg border-2 border-primary-200 bg-primary-50 p-4 dark:border-primary-900 dark:bg-primary-900/20">
+              <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-primary-700 dark:text-primary-300">
+                Nova explains
               </p>
-              <p className="leading-relaxed">{tutorResponse}</p>
+              <p className="text-sm font-semibold leading-relaxed text-body dark:text-white">
+                {tutorResponse}
+              </p>
             </div>
           )}
 
           {tutorError && (
-            <p className="text-xs text-rose-500">{tutorError}</p>
+            <div className="animate-fade-in rounded-lg border-2 border-hard/40 bg-hard-bg p-4">
+              <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-hard-fg">
+                Could not get an answer
+              </p>
+              <p className="text-sm font-semibold leading-relaxed text-body">{tutorError}</p>
+              <div className="mt-3">
+                <Button size="sm" variant="secondary" onClick={handleAskTutorSubmit}>
+                  Try again
+                </Button>
+              </div>
+            </div>
           )}
         </div>
       </Modal>

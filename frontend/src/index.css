@@ -2,24 +2,111 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Design tokens: plan.md 4.5. SHARED FILE - change by agreement. */
+/*
+ * LearnQuest design system - professional / information-dense (HackerRank-style).
+ * SHARED FILE - change by agreement (plan.md 2.4).
+ * Rules and rationale: docs/DESIGN_GUIDELINES.md
+ */
+
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
   }
+
   body {
-    @apply bg-slate-50 text-slate-900 antialiased;
-    @apply dark:bg-slate-900 dark:text-slate-100;
+    @apply bg-canvas text-body antialiased;
+    @apply dark:bg-[#12161C] dark:text-[#C6CDD6];
+    font-size: 14px;
+    line-height: 22px;
   }
+
+  /* Headings are a size and colour change, not a weight explosion. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-semibold text-ink dark:text-white;
+  }
+
+  /* Dense UIs live or die on table legibility. */
+  th {
+    @apply text-2xs font-semibold uppercase tracking-wide text-muted;
+  }
+
   :focus-visible {
-    @apply outline-none ring-2 ring-primary-500 ring-offset-2;
-    @apply dark:ring-offset-slate-900;
+    @apply outline-none ring-2 ring-primary-500/50 ring-offset-1;
+    @apply dark:ring-offset-[#12161C];
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.line-strong') transparent;
   }
 }
 
 @layer components {
+  /* ------------------------------------------------------------------ *
+   * Surfaces: a 1px hairline border, no drop shadow.
+   * ------------------------------------------------------------------ */
   .card {
-    @apply rounded-xl border border-slate-200 bg-white shadow-sm;
-    @apply dark:border-slate-800 dark:bg-slate-800/50;
+    @apply rounded-lg border border-line bg-surface;
+    @apply dark:border-[#242B35] dark:bg-[#171C23];
+  }
+
+  /* Rows in a list/table that can be clicked. */
+  .row-interactive {
+    @apply transition-colors hover:bg-canvas dark:hover:bg-[#1C222B];
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Inputs: compact, 1px border, clear focus.
+   * ------------------------------------------------------------------ */
+  .field {
+    @apply w-full rounded border border-line-strong bg-surface px-3 py-2 text-base text-body;
+    @apply placeholder:text-faint transition-colors;
+    @apply hover:border-muted;
+    @apply focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/25;
+    @apply dark:border-[#2D3643] dark:bg-[#171C23] dark:text-[#C6CDD6] dark:placeholder:text-[#5C6675];
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Status chip. The ONE pill-shaped thing in the system.
+   * ------------------------------------------------------------------ */
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-pill px-2 py-0.5 text-2xs font-semibold;
+  }
+
+  /* Difficulty labels read as text, coloured - never as heavy solid blocks. */
+  .chip-easy {
+    @apply bg-easy-bg text-easy-fg dark:bg-easy/15 dark:text-easy;
+  }
+  .chip-medium {
+    @apply bg-medium-bg text-medium-fg dark:bg-medium/15 dark:text-medium;
+  }
+  .chip-hard {
+    @apply bg-hard-bg text-hard-fg dark:bg-hard/15 dark:text-hard;
+  }
+
+  /* Small uppercase label above a section or beside a stat. */
+  .label {
+    @apply text-2xs font-semibold uppercase tracking-wide text-muted;
+  }
+
+  /* Data tables - the backbone of the courses/practice screens. */
+  .table-dense {
+    @apply w-full border-collapse text-sm;
+  }
+  .table-dense th {
+    @apply border-b border-line px-4 py-2.5 text-left;
+  }
+  .table-dense td {
+    @apply border-b border-line px-4 py-3 align-middle;
+  }
+  .table-dense tbody tr:last-child td {
+    @apply border-b-0;
+  }
+  .dark .table-dense th,
+  .dark .table-dense td {
+    @apply border-[#242B35];
   }
 }

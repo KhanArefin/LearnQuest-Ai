@@ -1,21 +1,30 @@
 /** Shared UI kit. OWNER: Member 2. Everyone imports these - plan.md 4.5. */
 
-export default function Tabs({
-  tabs = [],
-  activeTab,
-  onChange,
-  variant = 'underline',
-  className = '',
-}) {
+/**
+ * `underline` (default) is the primary navigation pattern for dense screens.
+ * `pills` is a compact segmented control for filters.
+ * See docs/DESIGN_GUIDELINES.md.
+ */
+export default function Tabs({ tabs = [], activeTab, onChange, variant = 'underline', className = '' }) {
+  const labelOf = (t) => t.label ?? t.title ?? (t.id ?? t.value);
+
+  const countOf = (tab, isActive) =>
+    tab.badge !== undefined && (
+      <span
+        className={`rounded px-1.5 py-0.5 text-2xs font-medium ${
+          isActive ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
+                   : 'bg-canvas text-muted dark:bg-[#1C222B]'
+        }`}
+      >
+        {tab.badge}
+      </span>
+    );
+
   if (variant === 'pills') {
     return (
-      <div
-        role="tablist"
-        className={`inline-flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800/80 ${className}`}
-      >
+      <div role="tablist" className={`inline-flex rounded border border-line-strong bg-surface p-0.5 dark:border-[#2D3643] dark:bg-[#171C23] ${className}`}>
         {tabs.map((tab) => {
           const id = tab.id ?? tab.value;
-          const label = tab.label ?? tab.title ?? id;
           const isActive = id === activeTab;
           return (
             <button
@@ -24,25 +33,13 @@ export default function Tabs({
               type="button"
               aria-selected={isActive}
               onClick={() => onChange?.(id)}
-              className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-sm font-medium transition-all ${
-                isActive
-                  ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-slate-100'
-                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+              className={`inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+                isActive ? 'bg-primary-600 text-white' : 'text-muted hover:text-body dark:hover:text-white'
               }`}
             >
               {tab.icon && <span>{tab.icon}</span>}
-              <span>{label}</span>
-              {tab.badge !== undefined && (
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs ${
-                    isActive
-                      ? 'bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-300'
-                      : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
-                  }`}
-                >
-                  {tab.badge}
-                </span>
-              )}
+              {labelOf(tab)}
+              {countOf(tab, isActive)}
             </button>
           );
         })}
@@ -50,15 +47,10 @@ export default function Tabs({
     );
   }
 
-  // Default: 'underline' variant
   return (
-    <div
-      role="tablist"
-      className={`flex border-b border-slate-200 dark:border-slate-800 ${className}`}
-    >
+    <div role="tablist" className={`flex gap-1 border-b border-line dark:border-[#242B35] ${className}`}>
       {tabs.map((tab) => {
         const id = tab.id ?? tab.value;
-        const label = tab.label ?? tab.title ?? id;
         const isActive = id === activeTab;
         return (
           <button
@@ -67,25 +59,15 @@ export default function Tabs({
             type="button"
             aria-selected={isActive}
             onClick={() => onChange?.(id)}
-            className={`-mb-px inline-flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+            className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
               isActive
-                ? 'border-primary-600 text-primary-600 dark:border-primary-500 dark:text-primary-400'
-                : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:text-slate-200'
+                ? 'border-primary-600 text-primary-700 dark:text-primary-400'
+                : 'border-transparent text-muted hover:border-line-strong hover:text-body dark:hover:text-white'
             }`}
           >
             {tab.icon && <span>{tab.icon}</span>}
-            <span>{label}</span>
-            {tab.badge !== undefined && (
-              <span
-                className={`rounded-full px-2 py-0.5 text-xs ${
-                  isActive
-                    ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300'
-                    : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                }`}
-              >
-                {tab.badge}
-              </span>
-            )}
+            {labelOf(tab)}
+            {countOf(tab, isActive)}
           </button>
         );
       })}

@@ -12,7 +12,10 @@ class Settings(BaseSettings):
 
     # --- app ---
     app_env: str = "development"
-    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    # Vite falls back to 5174/5175 when 5173 is taken (a second dev server,
+    # a stray process). Allowing the fallbacks avoids every request failing
+    # CORS preflight just because the frontend moved port.
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://localhost:5175,http://127.0.0.1:5175"
 
     # --- database (M3) ---
     database_url: str = ""
@@ -27,6 +30,11 @@ class Settings(BaseSettings):
     # --- llm (M1) ---
     llm_provider: str = "mock"
     llm_api_key: str = ""
+    # Gemini 2.5+ are "thinking" models: internal reasoning is billed against
+    # maxOutputTokens, so a small cap leaves nothing for the visible answer
+    # (measured: 237 of 250 tokens went to thinking, answer truncated at 31
+    # chars). 0 disables thinking; raise it only if you also raise max_tokens.
+    llm_thinking_budget: int = 0
     llm_model: str = "llama-3.3-70b-versatile"
     llm_timeout_seconds: int = 30
     llm_max_retries: int = 2

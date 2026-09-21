@@ -14,16 +14,16 @@ export default function Modal({ open, onClose, title, children, footer }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="absolute inset-0 bg-ink/40" onClick={onClose} />
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="card relative z-10 w-full max-w-lg animate-fade-in p-6"
+        className="card relative z-10 w-full max-w-lg animate-fade-in p-5 shadow-modal"
       >
-        {title && <h2 className="mb-4 text-lg font-semibold">{title}</h2>}
-        {children}
-        {footer && <div className="mt-6 flex justify-end gap-2">{footer}</div>}
+        {title && <h2 className="mb-3 border-b border-line pb-3 text-lg font-semibold dark:border-[#242B35]">{title}</h2>}
+        <div className="text-sm text-body dark:text-[#C6CDD6]">{children}</div>
+        {footer && <div className="mt-5 flex justify-end gap-2 border-t border-line pt-4 dark:border-[#242B35]">{footer}</div>}
       </div>
     </div>
   );

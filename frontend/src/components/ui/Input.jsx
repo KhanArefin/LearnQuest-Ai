@@ -1,21 +1,38 @@
 /** Shared UI kit. OWNER: Member 2. Everyone imports these - plan.md 4.5. */
 
-export default function Input({ label, error, className = '', id, ...props }) {
+export default function Input({ label, error, hint, className = '', id, ...props }) {
   const inputId = id || props.name;
+  const describedBy = error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined;
+
   return (
     <div className={className}>
       {label && (
-        <label htmlFor={inputId} className="mb-1.5 block text-sm font-medium">
+        <label
+          htmlFor={inputId}
+          className="mb-1.5 block text-sm font-medium text-body dark:text-[#C6CDD6]"
+        >
           {label}
         </label>
       )}
       <input
         id={inputId}
-        className={`w-full rounded-xl border px-3 py-2 text-sm transition-colors
-          dark:bg-slate-800 ${error ? 'border-rose-500' : 'border-slate-300 dark:border-slate-700'}`}
+        aria-invalid={error ? 'true' : undefined}
+        aria-describedby={describedBy}
+        className={`field ${
+          error ? 'border-hard focus:border-hard focus:ring-hard/25' : ''
+        }`}
         {...props}
       />
-      {error && <p className="mt-1 text-sm text-rose-500">{error}</p>}
+      {error && (
+        <p id={`${inputId}-error`} className="mt-1.5 text-xs text-hard">
+          {error}
+        </p>
+      )}
+      {!error && hint && (
+        <p id={`${inputId}-hint`} className="mt-1.5 text-xs text-muted">
+          {hint}
+        </p>
+      )}
     </div>
   );
 }

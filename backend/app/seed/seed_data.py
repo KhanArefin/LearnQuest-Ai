@@ -478,7 +478,12 @@ def main() -> None:
 
     db = get_session_factory()()
     try:
-        seed_courses(db)
+        course = seed_courses(db)
+        # Extra catalogue breadth lives in its own module so this file stays
+        # focused on the flagship course.
+        from app.seed.extra_courses import seed_extra_courses
+
+        seed_extra_courses(db, created_by=course.created_by if course else None)
         try:
             seed_badges(db)
         except Exception:

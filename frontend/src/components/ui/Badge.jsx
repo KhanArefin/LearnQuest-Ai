@@ -1,19 +1,22 @@
 /** Shared UI kit. OWNER: Member 2. Everyone imports these - plan.md 4.5. */
 
+// Status chips: quiet tinted text, never heavy solid blocks. Difficulty tones
+// map 1:1 to the words users read. See docs/DESIGN_GUIDELINES.md.
 const TONES = {
-  default: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
-  primary: 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-200',
-  success: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200',
-  warning: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-200',
-  danger: 'bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-200',
+  default: 'bg-canvas text-muted dark:bg-[#1C222B] dark:text-[#8A94A2]',
+  neutral: 'bg-canvas text-muted dark:bg-[#1C222B] dark:text-[#8A94A2]',
+  primary: 'bg-primary-50 text-primary-700 dark:bg-primary-900/25 dark:text-primary-300',
+  info: 'bg-info-bg text-info-fg dark:bg-info/15 dark:text-info',
+
+  // Difficulty
+  easy: 'bg-easy-bg text-easy-fg dark:bg-easy/15 dark:text-easy',
+  easy: 'bg-easy-bg text-easy-fg dark:bg-easy/15 dark:text-easy',
+  medium: 'bg-medium-bg text-medium-fg dark:bg-medium/15 dark:text-medium',
+  warning: 'bg-medium-bg text-medium-fg dark:bg-medium/15 dark:text-medium',
+  hard: 'bg-hard-bg text-hard-fg dark:bg-hard/15 dark:text-hard',
+  danger: 'bg-hard-bg text-hard-fg dark:bg-hard/15 dark:text-hard',
 };
 
 export default function Badge({ tone = 'default', children, className = '' }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${TONES[tone]} ${className}`}
-    >
-      {children}
-    </span>
-  );
+  return <span className={`chip ${TONES[tone] ?? TONES.default} ${className}`}>{children}</span>;
 }

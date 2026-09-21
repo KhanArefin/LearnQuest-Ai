@@ -40,6 +40,13 @@ again later. Courses, the avatar and XP hang off that loop; they are not the poi
 you believe that isn't true**, in plain English, and teaches that. Two students both scoring
 40% get different help.
 
+**The extension (added 2026-09-21):** once the misconception is known, the tutoring
+relationship is *inverted*. The photoreal SyncTalk avatar is seeded with the
+student's own misconception and the student must explain it out of the mistake -
+the avatar's score on the retried question becomes the student's grade. This is
+the *protege effect*, and it is the project's novel contribution. See
+context.md 6.10.
+
 ### Priority order
 
 Build top-down. Cut bottom-up.
@@ -49,6 +56,9 @@ Build top-down. Cut bottom-up.
 | **1** | Capture the misconception after a wrong answer (`topic_mastery.misconception`) | Everything below depends on it |
 | **1** | Tutor/avatar explains *that specific error*, not the topic | Turns a chatbot into a tutor |
 | **1** | Free-response answers with written feedback | Typing beats picking A/B/C/D for memory |
+| **1** | **Teach-Back**: student teaches the avatar out of their own misconception | The novel contribution; explaining is what makes it stick |
+| **1** | **SyncTalk Tier B**: photoreal avatar over WebSocket | A face that looks confused is what makes Teach-Back land |
+| **2** | **AI roadmap**: generated DAG over the real catalogue, re-plans on mastery | Gives the loop a destination; grounded so it cannot hallucinate |
 | **2** | Daily review queue on a spacing schedule (`review_items`) | Spacing is the best-evidenced learning method there is |
 | **2** | Upload your own notes/PDF → generated practice | Students revise *their* material, not a generic course |
 | **2** | Mix topics within a session rather than one topic at a time | Half a day's work, real gain |
@@ -66,7 +76,7 @@ Build top-down. Cut bottom-up.
 ### The demo line
 
 > "Two students both scored 40%. The app knows they're wrong for different reasons,
-> and teaches them differently."
+> and teaches them differently - by making each of them teach the tutor."
 
 ---
 
@@ -477,9 +487,23 @@ export const sendMessage = (conversationId, text) =>
 
 ### 4.5 Design system (build day 1, M2 leads, everyone uses)
 
-`components/ui/`: `Button`, `Card`, `Input`, `Modal`, `Spinner`, `Badge`, `ProgressBar`, `EmptyState`, `Toast`.
+`components/ui/`: `Button`, `Card`, `Input`, `Select`, `Modal`, `Spinner`, `Skeleton`,
+`Badge`, `ProgressBar`, `EmptyState`, `Tabs`, `Toast`.
 
-Tailwind tokens: primary `indigo-600`, success `emerald-500`, warning `amber-500`, danger `rose-500`, surface `slate-50` / `slate-900`. Dark mode via the `class` strategy. Radius `rounded-xl`, shadow `shadow-sm`.
+**The design system is professional and information-dense, modelled on HackerRank**
+(adopted 2026-09-21, replacing an earlier playful/Duolingo-style system).
+
+Key tokens - the full specification, including measured contrast ratios, is
+[docs/DESIGN_GUIDELINES.md](docs/DESIGN_GUIDELINES.md), which is authoritative:
+
+- Primary `primary-600` `#7C3AED`; difficulty `easy` / `medium` / `hard`
+- Neutrals `ink` / `body` / `muted` / `faint` / `line` / `surface` / `canvas`
+- Type: **Inter** (UI) + **JetBrains Mono** (code); body 14px, tables 13px
+- 1px hairline borders, `rounded` 4px, shadows only for floating elements
+- Dark mode via the `class` strategy
+
+**Rule:** colour carries status only. One primary button per view. Prefer a
+`.table-dense` table over a grid of cards whenever rows share columns.
 
 ---
 
