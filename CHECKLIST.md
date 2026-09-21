@@ -1,4 +1,4 @@
-# LearnQuest AI — 2-Week Delivery Checklist
+# LearnQuest AI — 4-Week Delivery Checklist
 
 > **How this works:** one member works at a time, in slot order. When your slot is
 > done you **push to `main` and message the group**. The next person pulls and starts.
@@ -191,23 +191,151 @@ Nova → Nova passes.
 
 ---
 
-## 🔴 Days 13–14 · Everyone · Integration & demo
+# 🗓️ WEEK 3 — the learning-science layer
 
-- [ ] Run the full demo script below, start to finish, three times — @, 2026-__-__
+> Weeks 1–2 make the loop work. Week 3 is what makes it a *learning* product
+> rather than a quiz app, and it restores the Tier 1/Tier 2 items from plan.md
+> §0.1 that a 2-week scope had to drop.
+
+## 🔵 Slot 9 · Member 1 · Days 13–15
+
+**Free-response grading + spaced repetition.**
+
+Free text is **Tier 1 in plan.md** and it matters more than it looks: the
+misconception engine currently only sees multiple-choice answers, which is the
+weakest possible signal for inferring a false belief. Typed answers are where it
+actually works.
+
+- [ ] `POST /api/quizzes/attempts/{id}/grade-open` — LLM grades a typed answer
+      against the expected one, returns correct/partial/incorrect + written feedback — @, 2026-__-__
+- [ ] Feed the typed answer into `capture_misconception()` (much richer input) — @, 2026-__-__
+- [ ] Guard: never mark correct on the model's word alone — require the rubric
+      match, and abstain to "needs review" when unsure — @, 2026-__-__
+- [ ] **Review queue generation** on the unused `review_items` table: schedule a
+      topic for review at expanding intervals after a wrong answer — @, 2026-__-__
+- [ ] `GET /api/review/today` — what is due now, weakest and most overdue first — @, 2026-__-__
+- [ ] `POST /api/review/{id}/answer` — grade, reschedule, update mastery — @, 2026-__-__
+- [ ] **Interleave**: a review session mixes topics rather than blocking one
+      topic at a time (plan.md calls this half a day's work, real gain) — @, 2026-__-__
+
+**✅ Hand off when:** a wrong typed answer schedules a review, and it comes back
+on the right day mixed with other topics.
+**→ Push, then tell M2.**
+
+---
+
+## 🟢 Slot 10 · Member 2 · Days 15–17
+
+**Practice problems + the review screen.**
+
+- [ ] `/practice` route + add the nav entry (marked TODO in `AppLayout.jsx`) — @, 2026-__-__
+- [ ] Problem page: statement, input/output examples, test cases — @, 2026-__-__
+- [ ] Submit → pass/fail per test case, stored as an attempt — @, 2026-__-__
+- [ ] "Skill verified" once N problems in a skill pass — @, 2026-__-__
+- [ ] **Review screen** driven by M1's `/api/review/today` — one card at a time — @, 2026-__-__
+- [ ] Free-response question type in `QuizPlayer` (textarea + M1's grader) — @, 2026-__-__
+- [ ] Mobile pass over Courses / Lesson / Quiz — @, 2026-__-__
+
+**→ Push, then tell M3.**
+
+---
+
+## 🟠 Slot 11 · Member 3 · Days 17–19
+
+**Upload your own notes → a course.**
+
+The differentiator plan.md describes: an uploaded PDF becomes a course using the
+same tables and the same pipeline, so nothing downstream knows the difference.
+
+- [ ] `POST /api/courses/upload` — accept a PDF/markdown file — @, 2026-__-__
+- [ ] Extract text, split into lesson-sized sections — @, 2026-__-__
+- [ ] Create a `Course` + `Lesson` rows marked `source="upload"`, `is_private=true` — @, 2026-__-__
+- [ ] Tag each lesson with topic tags (M1's vocabulary) so mastery + roadmap work — @, 2026-__-__
+- [ ] Upload UI: drop a file, see the generated course, edit titles — @, 2026-__-__
+- [ ] Security pass: file type/size limits, per-user ownership, RLS check — @, 2026-__-__
+
+**✅ Hand off when:** you upload a PDF and it appears as a private course you can
+learn from, with a roadmap generated over it.
+**→ Push, then tell M4.**
+
+---
+
+## 🟣 Slot 12 · Member 4 · Days 19–20
+
+**Analytics that show the learning, not just the score.**
+
+- [ ] Review-queue analytics: due today, overdue, retention rate — @, 2026-__-__
+- [ ] **Misconception map** from M1's `/api/mastery/me/misconceptions`:
+      active / fading / cleared over time — @, 2026-__-__
+- [ ] Mastery chart per topic — @, 2026-__-__
+- [ ] Seed ~15 badges + daily challenges; claim flow — @, 2026-__-__
+- [ ] Notifications bell wired to `/api/notifications` *(already real)* — @, 2026-__-__
+
+**✅ Week 3 is done when:** the app can say *"here is what you misunderstood, here
+is when you will see it again, and here is the proof you fixed it."*
+
+---
+
+# 🗓️ WEEK 4 — harden and ship
+
+> No new features. If something is not working by day 21, cut it.
+
+## 🔵 Slot 13 · Member 1 · Days 21–22
+
+- [ ] SyncTalk latency pass; measure and state the real number — @, 2026-__-__
+- [ ] Every AI call has a fallback path and a timeout — @, 2026-__-__
+- [ ] Rate-limit AI endpoints (they cost money per call) — @, 2026-__-__
+- [ ] Cache repeat roadmap/misconception calls where safe — @, 2026-__-__
+
+## 🟢 Slot 14 · Member 2 · Days 22–23
+
+- [ ] Empty state on every list and table — @, 2026-__-__
+- [ ] Loading + error state on every page that fetches — @, 2026-__-__
+- [ ] Full mobile pass at 375px — @, 2026-__-__
+- [ ] Bug fixing from the Week 3 integration list — @, 2026-__-__
+
+## 🟠 Slot 15 · Member 3 · Days 23–24
+
+- [ ] Final clean seed for the demo database — @, 2026-__-__
+- [ ] README setup instructions verified on a fresh clone — @, 2026-__-__
+- [ ] `DEV_ALLOW_ANONYMOUS=false`, RLS verified on every table — @, 2026-__-__
+- [ ] Deploy (or a rehearsed local demo path) — @, 2026-__-__
+
+## 🟣 Slot 16 · Member 4 · Days 24–26
+
+- [ ] Full test pass across every page and role — @, 2026-__-__
+- [ ] Bug triage: file, assign, verify fixes — @, 2026-__-__
+- [ ] Presentation slides + the report — @, 2026-__-__
+
+---
+
+## 🔴 Days 26–28 · Everyone · Dry run
+
+- [ ] Run the demo script below, start to finish, three times — @, 2026-__-__
 - [ ] Fix whatever breaks — @, 2026-__-__
-- [ ] Seed a clean database for the presentation — @, 2026-__-__
-- [ ] Rehearse the 5-minute demo — @, 2026-__-__
+- [ ] Rehearse the 5-minute demo with one person driving — @, 2026-__-__
+- [ ] Have an answer ready for "what would you build next?" — @, 2026-__-__
 
 ---
 
 ## 🎬 Demo script
 
+**Core loop (weeks 1–2):**
+
 1. Sign up → state a goal → **AI draws a branching roadmap** from the real catalogue
-2. Open a lesson → take a quiz → **get one wrong**
+2. Open a lesson → take a quiz → **answer in your own words** → get one wrong
 3. Screen names **the false belief**, not just "incorrect"
 4. **Nova appears — photoreal — holding that same wrong belief**
 5. Student talks her out of it
 6. **Nova re-takes the question and passes** → XP → roadmap re-plans
+
+**The learning-science close (week 3) — this is what separates it from a quiz app:**
+
+7. *"That misconception is now scheduled for review in 2 days."*
+8. Come back → the review queue **mixes it with other topics** (interleaving)
+9. Answer it right twice → the misconception map shows **active → fading → cleared**
+10. *"And you can upload your own notes"* → drop a PDF → it becomes a course
+    with its own roadmap
 
 ---
 
@@ -219,15 +347,16 @@ Professional design system
 
 ---
 
-## Cut to fit two weeks
+## Cut from scope
 
-- [-] Practice problems with a code editor and test cases — big build; the quiz
-      loop already demonstrates practice
-- [-] Daily challenges + notifications — nice-to-have, not on the demo path
-- [-] Spaced-repetition review queue (`review_items`) — the roadmap already
-      handles "what next"
-- [-] Upload-your-own-notes → course pipeline
-- [-] Duolingo-style playful design — replaced 2026-09-21 with the professional system
+- [-] Duolingo-style playful design — replaced 2026-09-21 with the professional
+      HackerRank-style system at the faculty's request
+- [-] Separate mobile app — the web UI is responsive
+- [-] Live collaborative study rooms — out of scope for this timeline
+
+**Restored into Weeks 3–4** (were cut when the plan was two weeks): free-response
+grading, spaced-repetition review queue, upload-your-notes → course, practice
+problems, interleaving, daily challenges.
 
 ---
 

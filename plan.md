@@ -509,10 +509,15 @@ Key tokens - the full specification, including measured contrast ratios, is
 
 ## 5. Timeline at a glance
 
+> **[CHECKLIST.md](CHECKLIST.md) is the operational schedule** - 16 slots across
+> 4 weeks, one member working at a time so no two people touch the same files.
+> This table is the shape; the checklist is the order of work.
+
+
 | Week | M1 (AI/Avatar) | M2 (Learning) | M3 (User/Admin) | M4 (Game/Analytics) |
 | --- | --- | --- | --- | --- |
-| **1** | LLM client + mock, prompts, chat API | UI kit, lesson viewer, course pages | Supabase auth, DB setup, **one deep seeded course** | Schema, `events.py`, XP engine |
-| **2** | **Misconception capture, free-response grading, tutor explains the error** | **Answer + feedback screen**, quiz UI | Admin panel, profile, roles, 2 thin courses | Streaks, XP, then-vs-now progress |
+| **1** | **Misconception engine** (done 2026-09-21) | Quiz backend + player, DB unblock | Google auth, profile | Dashboard on real stats |
+| **2** | **SyncTalk Tier B + Teach-Back** | Courses as tracks/skills/problems | Admin panel | Leaderboard, achievements, stats, history |
 | **3** | Review queue generation, recommendations, avatar wired up | **Queue-first dashboard**, upload UI, mobile pass | Upload → course pipeline, security pass | Queue analytics, charts, 2 badges |
 | **4** | Integration, latency, fallbacks | Bug fixing, empty states, polish | Final seed, docs, handover | Full test pass, bug triage, presentation |
 
