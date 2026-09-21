@@ -268,17 +268,27 @@ def get_current_user(
                 default_role="student",
             )
 
-        if not settings.supabase_jwt_secret and settings.dev_allow_anonymous:
-            # Running in dev mode with mock token or unconfigured secret
-            dev_id = uuid.UUID(DEV_USER["id"])
-            return _sync_user_in_db(
-                user_id=dev_id,
-                email=DEV_USER["email"],
-                full_name=DEV_USER["full_name"],
-                default_role="admin",
-            )
+        claims = None
+        try:
+            claims = verify_supabase_token(token)
+        except Exception as exc:
+            if settings.dev_allow_anonymous:
+                # If token is a JWT from Supabase, extract real claims without signature verification in dev mode
+                try:
+                    claims = jwt.decode(token, options={"verify_signature": False})
+                    if not claims or "sub" not in claims:
+                        raise ValueError("No sub claim in token")
+                except Exception:
+                    dev_id = uuid.UUID(DEV_USER["id"])
+                    return _sync_user_in_db(
+                        user_id=dev_id,
+                        email=DEV_USER["email"],
+                        full_name=DEV_USER["full_name"],
+                        default_role="admin",
+                    )
+            else:
+                raise exc
 
-        claims = verify_supabase_token(token)
         try:
             user_id = uuid.UUID(claims["sub"])
         except (ValueError, KeyError) as err:
