@@ -16,14 +16,14 @@ const AuthContext = createContext(null);
 
 const DEV_USER = {
   id: '00000000-0000-0000-0000-000000000001',
-  email: 'dev@learnquest.local',
-  full_name: 'Dev User',
+  email: 'admin@learnquest.ai',
+  full_name: 'Alex Mercer (Admin)',
   role: 'admin',
   avatar_url: null,
 };
 
 function generateDevUserId(email) {
-  if (email === 'dev@learnquest.local' || email === 'admin@learnquest.ai') {
+  if (email === 'admin@learnquest.ai') {
     return '00000000-0000-0000-0000-000000000001';
   }
   let hash = 0;
@@ -38,12 +38,14 @@ function generateDevUserId(email) {
 function toAppUser(session) {
   if (!session?.user) return null;
   const { id, email, user_metadata: meta = {} } = session.user;
+  const cleanEmail = (email || '').trim().toLowerCase();
+  const isExplicitAdmin = cleanEmail === 'admin@learnquest.ai';
   return {
     id,
-    email,
-    full_name: meta.full_name ?? meta.name ?? email,
+    email: cleanEmail,
+    full_name: meta.full_name ?? meta.name ?? cleanEmail,
     avatar_url: meta.avatar_url ?? meta.picture ?? null,
-    role: meta.role ?? 'student',
+    role: isExplicitAdmin ? 'admin' : 'student',
   };
 }
 
@@ -58,9 +60,12 @@ export function AuthProvider({ children }) {
       const res = await syncUser();
       const userData = res?.user || res?.data?.user;
       if (userData) {
+        const cleanEmail = (userData.email || baseUser.email || '').trim().toLowerCase();
+        const isExplicitAdmin = cleanEmail === 'admin@learnquest.ai';
         setUser((prev) => ({
           ...(prev || baseUser),
           ...userData,
+          role: isExplicitAdmin ? 'admin' : 'student',
         }));
       }
     } catch (err) {
@@ -89,11 +94,56 @@ export function AuthProvider({ children }) {
     }
 
     let isMounted = true;
+    const urlHash = typeof window !== 'undefined' ? window.location.hash : '';
+    const urlSearch = typeof window !== 'undefined' ? window.location.search : '';
+
+    const hashParams = new URLSearchParams(urlHash.replace(/^#/, ''));
+    const searchParams = new URLSearchParams(urlSearch);
+
+    const oauthError = hashParams.get('error') || searchParams.get('error');
+    const oauthErrorDesc = hashParams.get('error_description') || searchParams.get('error_description');
+    const oauthCode = searchParams.get('code');
+
+    if (oauthError) {
+      let msg = oauthErrorDesc ? decodeURIComponent(oauthErrorDesc.replace(/\+/g, ' ')) : oauthError;
+      if (oauthError === 'unsupported_provider' || msg.toLowerCase().includes('provider is not enabled')) {
+        msg = 'Google sign-in is not enabled on this Supabase project yet. Please sign in with email/password, or enable Google provider under Supabase Dashboard -> Authentication -> Providers.';
+      } else if (msg.toLowerCase().includes('unable to exchange external code')) {
+        msg = 'Google OAuth configuration error: Supabase could not exchange the code with Google. Please verify that the Google Client ID & Secret in Supabase match Google Cloud Console, and that the Redirect URI in Google Cloud Console is set to https://dkyvtuzutcblcpeerqeo.supabase.co/auth/v1/callback.';
+      }
+      setError(msg);
+      // Clean up URL hash / search so the error doesn't persist across navigation
+      if (typeof window !== 'undefined' && window.history?.replaceState) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+
     const hasAuthRedirectInUrl =
       typeof window !== 'undefined' &&
-      (window.location.hash.includes('access_token=') ||
-        window.location.hash.includes('error=') ||
-        window.location.search.includes('code='));
+      (urlHash.includes('access_token=') ||
+        Boolean(oauthError) ||
+        Boolean(oauthCode));
+
+    // If PKCE auth code was returned, exchange it for a session
+    if (oauthCode && !oauthError) {
+      supabase.auth.exchangeCodeForSession(oauthCode).then(({ data, error: exchangeErr }) => {
+        if (!isMounted) return;
+        if (exchangeErr) {
+          setError(exchangeErr.message);
+        } else if (data?.session) {
+          const appUser = toAppUser(data.session);
+          setUser(appUser);
+          setLoading(false);
+          if (appUser) syncWithBackend(appUser);
+        }
+        if (typeof window !== 'undefined' && window.history?.replaceState) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      }).catch((err) => {
+        if (!isMounted) return;
+        console.warn('OAuth code exchange failed:', err);
+      });
+    }
 
     // The interceptor in api/client.js pulls the token from here on every request.
     setTokenProvider(async (forceRefresh = false) => {
@@ -181,8 +231,9 @@ export function AuthProvider({ children }) {
       user,
       loading,
       error,
+      clearError: () => setError(null),
       isAuthenticated: Boolean(user),
-      isAdmin: user?.role === 'admin',
+      isAdmin: user?.email === 'admin@learnquest.ai' && user?.role === 'admin',
       devMode: !isSupabaseConfigured,
 
       async login(email, password) {
@@ -193,7 +244,7 @@ export function AuthProvider({ children }) {
             id: devId,
             email,
             full_name: email.split('@')[0].replace('.', ' '),
-            role: email.includes('admin') ? 'admin' : 'student',
+            role: email === 'admin@learnquest.ai' ? 'admin' : 'student',
             avatar_url: null,
           };
           localStorage.setItem('learnquest_dev_user', JSON.stringify(devAccount));
@@ -202,7 +253,8 @@ export function AuthProvider({ children }) {
           await syncWithBackend(devAccount);
           return null;
         }
-        const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
+        const cleanEmail = (email || '').trim().toLowerCase();
+        const { data, error: err } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
         if (err) {
           setError(err.message);
           return err;
@@ -216,7 +268,13 @@ export function AuthProvider({ children }) {
       async loginWithGoogle() {
         setError(null);
         if (!isSupabaseConfigured) {
-          const devAccount = { ...DEV_USER };
+          const devAccount = {
+            id: '00000000-0000-4000-8000-000000000099',
+            email: 'google.user@learnquest.local',
+            full_name: 'Google User',
+            role: 'student',
+            avatar_url: null,
+          };
           localStorage.setItem('learnquest_dev_user', JSON.stringify(devAccount));
           setTokenProvider(async () => `dev:${devAccount.id}:${devAccount.email}`);
           setUser(devAccount);
@@ -226,10 +284,6 @@ export function AuthProvider({ children }) {
           provider: 'google',
           options: {
             redirectTo: `${window.location.origin}/dashboard`,
-            queryParams: {
-              access_type: 'offline',
-              prompt: 'select_account',
-            },
           },
         });
         if (err) {
