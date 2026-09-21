@@ -168,6 +168,17 @@ class TopicMastery(Base):
     misconception_updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Consecutive correct answers since the misconception was captured. Drives
+    # the active -> fading -> cleared decay in services/mastery.py.
+    misconception_correct_streak: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    # Set when the streak clears it. The text is deliberately kept so the
+    # misconception map can show what a student has overcome, not only what
+    # they still get wrong.
+    misconception_cleared_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     correct: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_practiced_at: Mapped[datetime | None] = mapped_column(
@@ -184,6 +195,12 @@ class TopicMastery(Base):
             "misconception_updated_at": (
                 self.misconception_updated_at.isoformat()
                 if self.misconception_updated_at
+                else None
+            ),
+            "misconception_correct_streak": self.misconception_correct_streak or 0,
+            "misconception_cleared_at": (
+                self.misconception_cleared_at.isoformat()
+                if self.misconception_cleared_at
                 else None
             ),
             "attempts": self.attempts,

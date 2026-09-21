@@ -46,12 +46,12 @@ to teach it out of the mistake. Its score on the retry is your grade.
 
 **AI misconception engine — the novel core.**
 
-- [ ] Implement `services/mastery.py::capture_misconception()` — LLM names the
-      **false belief** behind a wrong answer in plain English — @, 2026-__-__
-- [ ] Reject invented misconceptions: if the model is unsure, store `None` — @, 2026-__-__
-- [ ] Register a `quiz.submitted` handler that calls it *(fires once M2 emits in Slot 2)* — @, 2026-__-__
-- [ ] `GET /api/mastery/me/misconceptions` — list with status active/fading/cleared — @, 2026-__-__
-- [ ] Decay: N correct answers moves active → fading → cleared — @, 2026-__-__
+- [x] Implement `services/mastery.py::capture_misconception()` — LLM names the
+      **false belief** behind a wrong answer in plain English — @sahilaf, 2026-09-21
+- [x] Reject invented misconceptions: if the model is unsure, store `None` — @sahilaf, 2026-09-21
+- [x] Register a `quiz.submitted` handler that calls it *(fires once M2 emits in Slot 2)* — @sahilaf, 2026-09-21
+- [x] `GET /api/mastery/me/misconceptions` — list with status active/fading/cleared — @sahilaf, 2026-09-21
+- [x] Decay: N correct answers moves active → fading → cleared — @sahilaf, 2026-09-21
 
 **✅ Hand off when:** you can POST a wrong answer and see a misconception row written.
 **→ Push, then tell M2.**
@@ -64,7 +64,9 @@ to teach it out of the mistake. Its score on the retry is your grade.
 are commented out in `models/__init__.py:3`, so they were never migrated.
 
 - [ ] Uncomment `from app.models import progress, quiz` — @, 2026-__-__
-- [ ] Create + run migration `0005_m2_quiz_progress_schema` — @, 2026-__-__
+- [ ] Create + run migration `0006_m2_quiz_progress_schema` — set
+      `down_revision = "0005_m1_misconception_tracking"` so it chains instead of
+      branching (two heads off 0004 would need an alembic merge) — @, 2026-__-__
 - [ ] Verify `quizzes`, `quiz_questions`, `quiz_attempts`, `lesson_progress` exist — @, 2026-__-__
 
 **Then make quizzes work** — nothing in the app has a game loop without this.
@@ -73,8 +75,15 @@ are commented out in `models/__init__.py:3`, so they were never migrated.
       (security, plan.md 7.3 — never send answers to the client) — @, 2026-__-__
 - [ ] `POST /api/quizzes/{id}/attempts` — create attempt — @, 2026-__-__
 - [ ] `POST /api/quizzes/attempts/{id}/submit` — score + persist — @, 2026-__-__
-- [ ] **`emit(db, user_id, "quiz.submitted", {...})` on submit** — this is what
-      triggers M1's misconception capture *and* M4's XP — @, 2026-__-__
+- [ ] **`emit(db, user_id, "quiz.submitted", payload)` on submit** — triggers M1's
+      misconception capture *and* M4's XP. The payload **must** include an
+      `answers` list or no misconception can be identified: — @, 2026-__-__
+      ```python
+      {"quiz_id": ..., "correct_count": 3, "total_questions": 5,
+       "answers": [{"topic_tag": "dbms.sql_joins", "prompt": "...",
+                    "correct_answer": "...", "user_answer": "...",
+                    "is_correct": False}, ...]}
+      ```
 - [ ] `QuizPlayer.jsx` — one question at a time, progress — @, 2026-__-__
 - [ ] `QuizResult.jsx` — score + per-question review — @, 2026-__-__
 - [ ] `GET /api/me/progress` — real *(M4 needs this in Slot 4)* — @, 2026-__-__
