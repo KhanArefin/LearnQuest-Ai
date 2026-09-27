@@ -31,11 +31,11 @@ Every `[x]` below was re-checked against the code, not trusted.
 
 | Member | Done | In progress | Open | Total |
 |---|---|---|---|---|
-| **M1** (AI) | 15 | 0 | 12 | 27 |
+| **M1** (AI) | 15 | 0 | 26 | 41 |
 | **M2** (Learning) | 12 | 0 | 17 | 29 |
 | **M3** (Users) | 7 | 1 | 14 | 22 |
 | **M4** (Game) | 6 | 0 | 19 | 25 |
-| | **40** | **1** | **62** | **103** | **1** | **61** | **100** | **1** | **61** | **98** | **2** | **68** | **97** |
+| | **40** | **1** | **76** | **117** | **1** | **62** | **103** | **1** | **61** | **100** | **1** | **61** | **98** | **2** | **68** | **97** |
 
 Plus 4 shared dry-run items in Days 26-28.
 
@@ -253,6 +253,83 @@ Nova → Nova passes. *(Verified 2026-09-22: 15 tests in
 > Weeks 1–2 make the loop work. Week 3 is what makes it a *learning* product
 > rather than a quiz app, and it restores the Tier 1/Tier 2 items from plan.md
 > §0.1 that a 2-week scope had to drop.
+
+## 🔵 Slot 9A · Member 1 · Adaptive content — foundations
+
+**Approved 2026-09-27.** The student should get quizzes, and later courses, that
+are generated for them rather than seeded. Steps 3-6 of that flow already work
+(misconception capture, the avatar, Teach-Back); what is missing is the
+generation that feeds them.
+
+Two things have to exist before any generation is safe:
+
+- [ ] **`topic_tags` becomes a real table**, seeded from the 12 in
+      `seed_data.py:28`. Right now the vocabulary lives in a *seed file* and is
+      enforced nowhere at runtime, while `topic_mastery`, misconceptions,
+      Teach-Back and the roadmap all key on the tag. Generation that invents its
+      own tags gives every student a private namespace: the misconception map
+      fragments, nothing accumulates across sessions, and the part of this
+      project that is actually novel stops working — @, 2026-__-__
+- [ ] Generation is constrained to that vocabulary, the same way
+      `roadmap_planner.validate_steps()` already constrains the planner to the
+      real catalogue. Copy that pattern rather than inventing a second one — @, 2026-__-__
+- [ ] **`generation_jobs` table + background runner + `GET /api/jobs/{id}`.**
+      Measured 2026-09-27: **8.0s** for one lesson-sized call, so a six-lesson
+      course is ~100s, and `api/client.js` gives up at **30s**. Anything
+      generative returns a job id immediately and is polled — @, 2026-__-__
+- [ ] Per-user daily generation cap, surfaced as a real error rather than a 500.
+      The free tier is a per-day, per-model request quota and it is shared with
+      the tutor, misconception capture and Teach-Back — @, 2026-__-__
+
+**✅ Hand off when:** a slow generation returns a job id in under a second and
+its result appears when the job finishes.
+
+---
+
+## 🔵 Slot 9B · Member 1 · Adaptive quizzes
+
+**A quiz built for this student, fresh every attempt** (decided 2026-09-27:
+questions never repeat, which is better practice and costs 1-2 calls, not 13).
+
+- [ ] Implement `services/quiz_generator.py::generate_quiz()` — the stub's
+      docstring already specifies the whole pipeline and its guardrails
+      (`correct_answer` must be one of `options`, no duplicate prompts, cap 10
+      questions, never 500 on a malformed reply) — @, 2026-__-__
+- [ ] Wire `POST /api/quizzes/generate` — the route exists and returns an empty
+      shape today — @, 2026-__-__
+- [ ] `POST /api/quizzes/generate/adaptive` — difficulty from `topic_mastery`
+      (<0.4 easy, 0.4-0.75 medium, >0.75 hard), questions aimed at the student's
+      weakest tags **and at any active misconception**, so the quiz re-tests the
+      belief rather than sampling at random — @, 2026-__-__
+- [ ] Generated quizzes persist with `source="ai_generated"` and emit
+      `quiz.generated` — @, 2026-__-__
+- [ ] The loop closes: wrong answer → misconception → "Learn this" → "Teach
+      Nova" with that misconception pre-loaded. Both ends already exist; this is
+      wiring — @, 2026-__-__
+
+**✅ Hand off when:** two students with different mastery get visibly different
+quizzes on the same topic, and getting one wrong still produces a misconception.
+
+---
+
+## 🔵 Slot 9C · Member 1 · Generated courses *(after 9A and 9B)*
+
+- [ ] `services/course_planner.py`: goal → outline → lessons, tags drawn only
+      from the vocabulary. `Course` already has `source`, `is_private` and
+      `created_by`, so **no migration is needed** — @, 2026-__-__
+- [ ] Runs as a generation job with progress in the UI — @, 2026-__-__
+- [ ] Courses are auto-published but marked `source="ai_generated"` and private
+      to the student who asked for them (decided 2026-09-27) — @, 2026-__-__
+- [ ] ⚠️ **Nobody checks this content.** The AI writes the lesson, writes a quiz
+      from it, grades it, and names the misconception behind a wrong answer. A
+      wrong lesson means the app confidently teaches wrong material and then
+      diagnoses a false belief about it. Revisit before anyone outside the team
+      uses it — @, 2026-__-__
+- [ ] ⚠️ At ~13 calls per course and a per-day free-tier quota, whole-course
+      generation caps the whole app near **20 students a day**. Reconsider
+      caching by `(topic, difficulty)` here — @, 2026-__-__
+
+---
 
 ## 🔵 Slot 9 · Member 1 · Days 13–15
 

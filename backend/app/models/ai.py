@@ -411,3 +411,115 @@ class TeachBackSession(Base):
         if include_answer or self.status in ("passed", "failed"):
             data["question_correct_answer"] = self.question_correct_answer
         return data
+
+
+class Topic(Base):
+    """The controlled vocabulary of topic tags.
+
+    `topic_tag` is the spine of this application: `topic_mastery`, every
+    misconception, Teach-Back and the roadmap all key on it. Until now the
+    vocabulary was a Python list in `seed/seed_data.py` and nothing enforced it
+    at runtime, which was survivable only because every tag was written by hand.
+
+    Once content is generated per student that stops being true. A model asked
+    to tag a lesson will happily invent `sql.joins`, `databases.inner_join` and
+    `dbms.joins` for the same idea, and each one becomes a separate mastery row.
+    The misconception map fragments, nothing accumulates across sessions, and the
+    part of this project that is actually novel quietly stops working.
+
+    So the vocabulary is a table, generation is constrained to it, and adding a
+    tag is a deliberate act rather than a side effect of a prompt.
+    """
+
+    __tablename__ = "topics"
+
+    # The tag is the natural key and is already what every other table stores.
+    tag: Mapped[str] = mapped_column(String(100), primary_key=True)
+    label: Mapped[str] = mapped_column(String(200), nullable=False)
+    subject: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    # Retire a tag without deleting it: existing mastery rows still reference it.
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "tag": self.tag,
+            "label": self.label,
+            "subject": self.subject,
+            "is_active": self.is_active,
+        }
+
+
+class GenerationJob(Base):
+    """A unit of AI work too slow to do inside a request.
+
+    Measured 2026-09-27: one lesson-sized completion takes ~8s, so a six-lesson
+    course is around 100s, and the frontend's axios client gives up at 30s.
+    Generation therefore returns a job id immediately and the client polls.
+
+    Kept deliberately small - a row, a background task and a poll endpoint. A
+    queue would be the right answer for real traffic, but it is infrastructure
+    this project does not otherwise need, and the failure mode it protects
+    against (a dropped job on restart) is handled by `reap_stale_jobs()`.
+    """
+
+    __tablename__ = "generation_jobs"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # quiz | course
+    kind: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    # queued | running | succeeded | failed
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="queued", index=True
+    )
+    # 0-100. Coarse on purpose: "lesson 3 of 6" is all a progress bar needs.
+    progress: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    params: Mapped[dict[str, Any]] = mapped_column(JSON_VARIANT, nullable=False, default=dict)
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSON_VARIANT, nullable=True)
+    # Shown to the student, so it must read as a sentence, not a stack trace.
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        index=True,
+    )
+    started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    finished_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    @property
+    def is_terminal(self) -> bool:
+        return self.status in ("succeeded", "failed")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": str(self.id),
+            "kind": self.kind,
+            "status": self.status,
+            "progress": self.progress,
+            "result": self.result,
+            "error": self.error,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "finished_at": self.finished_at.isoformat() if self.finished_at else None,
+        }

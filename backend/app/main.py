@@ -20,6 +20,7 @@ from app.routers import (
     avatar,
     courses,
     gamification,
+    jobs,
     lessons,
     mastery,
     progress,
@@ -52,6 +53,7 @@ app = FastAPI(
         {"name": "tutor", "description": "AI tutor conversations. (M1)"},
         {"name": "roadmap", "description": "AI-generated learning roadmaps. (M1)"},
         {"name": "mastery", "description": "Topic mastery and misconceptions. (M1)"},
+        {"name": "jobs", "description": "Background AI generation jobs. (M1)"},
         {"name": "avatar", "description": "Avatar speech and lipsync payloads. (M1)"},
         {"name": "recommendations", "description": "Personalized recommendations. (M1)"},
         {"name": "gamification", "description": "XP, badges, streaks, challenges. (M4)"},
@@ -76,6 +78,7 @@ app.include_router(lessons.router)           # M2
 app.include_router(progress.router)          # M2
 app.include_router(quizzes.router)           # M2 attempts + M1 generation
 app.include_router(mastery.router)           # M1
+app.include_router(jobs.router)              # M1
 app.include_router(roadmap.router)           # M1
 app.include_router(tutor.router)             # M1
 app.include_router(avatar.router)            # M1
@@ -103,6 +106,21 @@ def root() -> dict:
 @app.on_event("startup")
 def _startup() -> None:
     logger.info("LearnQuest AI starting in %s mode", settings.app_env)
+
+    # A restart mid-generation leaves rows stuck at "running" that nothing is
+    # alive to finish, and a client would poll them forever.
+    if database_is_configured():
+        try:
+            from app.database import get_session_factory
+            from app.services.jobs import reap_stale_jobs
+
+            db = get_session_factory()()
+            try:
+                reap_stale_jobs(db)
+            finally:
+                db.close()
+        except Exception as exc:  # noqa: BLE001 - never block startup on this
+            logger.warning("Could not reap stale generation jobs: %s", exc)
     if not database_is_configured():
         logger.warning("DATABASE_URL is not set - endpoints that need the DB will fail.")
     if settings.llm_provider == "mock":
