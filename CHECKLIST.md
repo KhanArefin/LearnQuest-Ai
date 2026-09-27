@@ -136,6 +136,11 @@ slots further down.
 
 ### 🟢 M2 (Learning) — **Slot 9D**
 
+Your API clients are ready: `generateQuiz` / `generateAdaptiveQuiz` in
+`api/quizzes.js`, `generateCourse` in `api/courses.js`, and
+`hooks/useGenerationJob.js` does the job polling for you — you should not need
+to write a `setTimeout`.
+
 The backend for generated content is done and returns your existing shapes, so
 `QuizPlayer` needs **zero changes**.
 
@@ -152,6 +157,9 @@ The backend for generated content is done and returns your existing shapes, so
 
 ### 🟣 M4 (Gamification) — **Slot 9E**
 
+Your API client is ready: `api/mastery.js` has `myMisconceptions()` and
+`myMastery()`, and `analytics.js` no longer points at your own stub.
+
 `Stats.jsx` is still 11 lines, and it is now the most valuable screen in the app:
 the misconception map is the thing that shows what this product does, and
 generated quizzes finally make mastery move.
@@ -164,13 +172,13 @@ generated quizzes finally make mastery move.
 - ⚠️ Your three XP tests are order-dependent — see the note under Repo state.
   They pass now for the wrong reason.
 
-### 🟠 M3 (Users) — **G2, then G5**
+### 🟠 M3 (Users) — **G2, then `Profile.jsx`**
+
+G5 is done — anonymous access now fails closed.
 
 - **G2:** Google sign-in still fails at the token exchange. The client secret in
   Supabase does not match the client id. This is the last thing stopping a
   stranger signing up, and it is a dashboard fix, not a code fix.
-- **G5:** `DEV_ALLOW_ANONYMOUS` defaults to `True` and production only *logs* a
-  complaint — every endpoint will answer an unauthenticated caller. Two lines.
 - `Profile.jsx` is still 11 lines.
 
 ### 🔵 M1 (AI) — **Slot 9**
@@ -705,6 +713,15 @@ service runs `soundfile.read()` on every one).
 The backend refuses any sample rate other than the stream's rather than shipping
 one that would desynchronise the mouth silently.
 
+### ~~[G5] — `DEV_ALLOW_ANONYMOUS` does not fail closed~~ · **closed 2026-09-28**
+
+The default is now `False`, and `Settings.allow_anonymous` refuses it in
+production whatever the environment says. Verified: a fresh deploy with no
+`.env` gets `False` in both dev and production; production with the flag forced
+on still resolves `False`; local development still works.
+
+<details><summary>the original report</summary>
+
 ### [G5] — `DEV_ALLOW_ANONYMOUS` does not fail closed
 
 `config.py:27` defaults it to `True`. `main.py:110` only *logs an error* in
@@ -712,6 +729,8 @@ production — it does not refuse to start or deny the request, and `deps.py:295
 and `deps.py:332` still grant anonymous access. Every endpoint will answer an
 unauthenticated caller. Flip the default and make production fail closed before
 anything is deployed. *(Owner: M3, Slots 7 and 15.)*
+
+</details>
 
 ---
 
@@ -749,16 +768,19 @@ migration `0003`).
 
 ### Tests
 
-**150 backend tests, all passing.** `test_teachback`, `test_tts`,
+**156 backend tests, all passing** — green twice in a row, which it had not been all month. `test_teachback`, `test_tts`,
 `test_topics_and_jobs`, `test_quiz_generator`, `test_course_planner` and
 `test_progress_queries` are new.
 
-> ⚠️ **M4:** the three XP tests that used to fail now pass, and nothing in
-> `xp_engine.py` or `test_xp_engine.py` was changed — git confirms both are
-> byte-identical. They pass in isolation too. Adding test files changed
-> unittest's discovery order and that was enough to flip them, which means they
-> depend on global state leaking between modules, almost certainly the event
-> handler registry. They are fragile, not fixed.
+> **M4 — those three XP tests were not flaky, they were right.** I said earlier
+> they passed for the wrong reason; that was wrong. `xp_events.created_at` is
+> written in UTC while "today" came from `date.today()`, the machine's *local*
+> date. East of Greenwich those disagree for the first hours after local
+> midnight, so every "has this happened today?" lookup answered no: the
+> daily-login bonus could be claimed repeatedly and the 25 XP/day tutor cap
+> stopped applying. A six-hour hole every night, not a test problem. Fixed
+> 2026-09-28 and pinned by `test_xp_day_boundary.py`, which fails whatever hour
+> it runs at.
 
 ---
 
