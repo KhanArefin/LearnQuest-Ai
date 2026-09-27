@@ -11,6 +11,23 @@
 
 ## 0. How to read this plan
 
+> **This file is the design, not the status. Updated 2026-09-28.**
+>
+> For what actually exists today, read **[CHECKLIST.md](CHECKLIST.md)** — it is
+> re-audited against the code, and its "Read this after you pull" section has
+> the two steps (`alembic upgrade head`, a new `LLM_MODEL`) you need before
+> anything will run.
+>
+> Where this plan and the code disagree, the code wins and the checklist says
+> so. Two sections are already amended in place: **§6.4a** (content is generated
+> per student, not only seeded) and **§6.6** (Tier A, the SVG avatar, was
+> removed — there is one avatar now).
+>
+> Ownership in the table below still describes who *should* build what. It was
+> deliberately set aside during the September push, so several files are not
+> where this map says they are; CHECKLIST lists exactly which.
+
+
 Each member owns a **vertical slice**: the DB tables, the FastAPI routers, and the React pages for their feature. You do not hand your backend to someone else to build the UI for. This means:
 
 - You can work without blocking on anyone else, as long as the **contracts in §3 and §4 are respected**.

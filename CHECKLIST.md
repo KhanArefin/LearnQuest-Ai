@@ -25,7 +25,76 @@ to teach it out of the mistake. Its score on the retry is your grade.
 
 ---
 
-## Where we actually are — audited 2026-09-22
+## ⚠️ Read this after you pull — 2026-09-28
+
+Ten commits landed since `0d788ba`. Two of them will break your local setup if
+you skip these.
+
+### Everyone, before you run anything
+
+```bash
+cd backend && .venv/Scripts/python.exe -m alembic upgrade head
+```
+
+You are almost certainly on `0006`. Head is now **`0009`**. Without this the
+tutor page, Teach-Back and anything generative fail with *column does not
+exist* — the models reference columns your database has not got yet.
+
+Then in `backend/.env`:
+
+```
+LLM_MODEL=gemini-3.6-flash
+```
+
+The old value is out of daily quota. Gemini's free tier is a **per-day,
+per-model** request cap, so if `gemini-3.6-flash` is also dry, try another model
+name — each has its own bucket. Every AI feature fails with a 429 otherwise, and
+that includes the tutor and the misconception engine.
+
+Restart your dev server too: the Tailwind config changed and a long-running Vite
+process holds a stale copy.
+
+### The UI is dark-first now, and colour rules are enforced
+
+Three rules, expanded in [docs/DESIGN_GUIDELINES.md](docs/DESIGN_GUIDELINES.md):
+
+1. **Never write a raw colour.** No `bg-white`, no `text-slate-500`, no hex.
+   Only tokens: `bg-surface`, `text-muted`, `border-line`. 429 hardcoded classes
+   across 16 files were replaced in one pass; please do not start the drift
+   again.
+2. **Never write a `dark:` variant.** The theme lives in CSS variables on
+   `:root`, so `.dark` is never applied and a `dark:` utility is dead code that
+   looks meaningful.
+3. **Never hand-roll a control.** Use `Button`, `Input`, `Select`, `Badge`,
+   `Card` from `components/ui`. Body text is 15px and buttons are 40px.
+
+### Files of yours I edited
+
+Ownership was set aside deliberately for this stretch (the lead's call), so
+check these before you branch off them:
+
+| File | Owner | What changed |
+|---|---|---|
+| `routers/quizzes.py` | M2 | The two `/generate` stubs are now real |
+| `routers/courses.py` | M2 | New `POST /generate` returning a job |
+| `routers/progress.py` | M2 | N+1 removed — prefetch instead of a query per course |
+| `app/main.py` | shared | One line registering the jobs router, plus a startup reaper |
+| `app/database.py` | M3 | `pool_pre_ping` off by default (it cost 105ms per request) |
+| `services/events.py` | M4 | `course.generated` added to `EventType` |
+| `pages/`, `components/` | all | Colour classes moved onto tokens; no logic touched |
+
+### What is live that was not before
+
+- **The misconception engine fires.** A wrong quiz answer produces a named false
+  belief. Verified against the live model.
+- **Teach-Back.** Nova is seeded with that belief, argues from it, and re-takes
+  the question. Her score is the student's grade.
+- **The avatar speaks** (SyncTalk + Gemini TTS) — needs the GPU service running.
+- **Generated quizzes and courses**, aimed at what each student gets wrong.
+
+---
+
+## Where we actually are — audited 2026-09-28
 
 Every `[x]` below was re-checked against the code, not trusted.
 
@@ -35,20 +104,79 @@ Every `[x]` below was re-checked against the code, not trusted.
 | **M2** (Learning) | 12 | 0 | 23 | 35 |
 | **M3** (Users) | 7 | 1 | 14 | 22 |
 | **M4** (Game) | 6 | 0 | 22 | 28 |
-| | **52** | **1** | **74** | **127** | **1** | **74** | **124** | **1** | **70** | **119** | **1** | **76** | **117** | **1** | **62** | **103** | **1** | **61** | **100** | **1** | **61** | **98** | **2** | **68** | **97** |
+| **Total** | **52** | **1** | **74** | **127** |
 
 Plus 4 shared dry-run items in Days 26-28.
 
-Week 1 is nearly closed and the admin panel shipped a week early. **Slot 5 is
-done: the misconception engine fires, the Teach-Back loop runs end to end, and
-the avatar speaks.** G1, G4 and G6 are closed. G2, G3 and G5 remain, and none of
-them block the pitch. See [Open gaps](#open-gaps) — slot items reference them by
-ID so the lists stay scannable.
+**M1's backend work is largely done.** The misconception engine fires,
+Teach-Back runs end to end, the avatar speaks, and quizzes and courses are
+generated per student. What is left for M1 is Week 3's review queue and
+free-response grading (Slot 9).
 
-**Tier A was removed on 2026-09-22.** There is one avatar (SyncTalk) and one
-voice (Gemini TTS). Without a GPU service the tutor page shows an "avatar
+**The bottleneck is now the frontend.** Almost everything M1 shipped has no UI:
+generated quizzes, generated courses, the misconception map. Slots 9D (M2) and
+9E (M4) are the highest-value work left in the project, because they are what
+makes the novel part visible to anyone who is not reading a database.
+
+G1, G4 and G6 are closed. **G2** (Google sign-in), **G3** (the dashboard never
+calls the roadmap) and **G5** (anonymous access is not fail-closed) remain — see
+[Open gaps](#open-gaps).
+
+**There is one avatar.** Tier A — the SVG avatar and its Web Speech voice — was
+removed on 2026-09-22. Without a GPU service the tutor page shows an "avatar
 offline" panel naming what is missing; chat and Teach-Back are unaffected, which
-is what M2/M3/M4 will see.
+is what M2/M3/M4 will see on their own machines.
+
+---
+
+## 👉 Start here — one task each
+
+Pick the thing at the top of your list. Everything below it is in the numbered
+slots further down.
+
+### 🟢 M2 (Learning) — **Slot 9D**
+
+The backend for generated content is done and returns your existing shapes, so
+`QuizPlayer` needs **zero changes**.
+
+- `POST /api/quizzes/generate` `{lesson_id}` → a ready-to-take quiz. Take `id`,
+  route to `/quiz/{id}`. ~8s, so show a spinner.
+- `POST /api/quizzes/generate/adaptive` → same, but aimed at this student's three
+  weakest topics and at any belief the app has recorded about them.
+- `POST /api/courses/generate` `{goal}` → **202 with a job id, not a course.**
+  Poll `GET /api/jobs/{job_id}` and show `progress`; on `succeeded` its `result`
+  has `{course_id, slug, title, lessons, topics}` and the student is enrolled.
+- Handle **429** as "you have used today's generations" —
+  `GET /api/jobs/quota` returns `{used, limit, remaining}` so a button can say
+  so before it is pressed.
+
+### 🟣 M4 (Gamification) — **Slot 9E**
+
+`Stats.jsx` is still 11 lines, and it is now the most valuable screen in the app:
+the misconception map is the thing that shows what this product does, and
+generated quizzes finally make mastery move.
+
+- `GET /api/mastery/me/misconceptions` → active / fading / cleared, with the text
+  of each belief.
+- `GET /api/mastery/me` → mastery per topic.
+- ⚠️ Use M1's `/api/mastery/*`. The `/mastery/me` in your `analytics.py` is still
+  a stub returning `{"items": []}` and will look like it works.
+- ⚠️ Your three XP tests are order-dependent — see the note under Repo state.
+  They pass now for the wrong reason.
+
+### 🟠 M3 (Users) — **G2, then G5**
+
+- **G2:** Google sign-in still fails at the token exchange. The client secret in
+  Supabase does not match the client id. This is the last thing stopping a
+  stranger signing up, and it is a dashboard fix, not a code fix.
+- **G5:** `DEV_ALLOW_ANONYMOUS` defaults to `True` and production only *logs* a
+  complaint — every endpoint will answer an unauthenticated caller. Two lines.
+- `Profile.jsx` is still 11 lines.
+
+### 🔵 M1 (AI) — **Slot 9**
+
+Free-response grading and the spaced-repetition review queue. `review_items`
+has been sitting in the schema since migration `0003`, indexed and unused.
 
 ---
 
@@ -587,37 +715,50 @@ anything is deployed. *(Owner: M3, Slots 7 and 15.)*
 
 ---
 
-## Repo state — audited 2026-09-22
+## Repo state — audited 2026-09-28
 
-### Frontend pages
+Read from the code, not from the boxes above.
 
-| Built | Still an 11-line placeholder |
-|---|---|
-| Landing (353) · Login (198) · Register (228) · ForgotPassword (133) | **Leaderboard** |
-| Dashboard (547) · CourseCatalog (319) · CourseDetail (684) | **Stats** |
-| LessonViewer (761) · QuizPlayer (453) · QuizResult (300) | **Profile** |
-| Roadmap (443) · Tutor (441) · Achievements (271) · History (301) | |
-| Admin: Overview (320) · Users (303) · Courses (1323) | |
+### Still a placeholder (11 lines each)
 
-All are routed in `App.jsx`. Only five appear in `NAV` — **History is built but
-effectively unreachable** (Slot 8).
+**Leaderboard** · **Stats** · **Profile** — all routed in `App.jsx`, all dead
+ends if a nav link is added. `Stats` is the one worth building first: the
+misconception map is the screen that shows what this product actually does, and
+it finally has real data moving through it.
 
-### Backend endpoints
+`History` is built (301 lines) and routed but absent from `NAV`, so it is
+reachable only from a single Dashboard link.
 
-**Real:** all `courses` · `lessons` · `progress` · `users` · `admin` (14 routes) ·
-`quizzes` fetch + attempts + submit + review · `gamification` stats / badges /
-achievements · all `roadmap` (4) · all `mastery` (2) · all `tutor` (7 + 5 Teach-Back) ·
-all `avatar` (status / config / session / speech)
+### Backend
 
-**Still stubs:** `analytics.py` (all 4) · `gamification` leaderboard + challenges +
-notifications · `quizzes` generate / generate-adaptive / grade-open ·
-`recommendations` list + dismiss + daily-plan
+**Real:** all `courses` (incl. `POST /generate`) · `lessons` · `progress` ·
+`users` · `admin` (14 routes) · `quizzes` (fetch, attempts, submit, review, and
+both `/generate` routes) · `gamification` stats / badges / achievements ·
+all `roadmap` · all `mastery` · all `tutor` (7 + 5 Teach-Back) · all `avatar`
+(status / config / session / speech) · all `jobs`
+
+**Still stubs:** `analytics.py` (all 4 — M4, and `/mastery/me` there duplicates
+M1's working one) · `gamification` leaderboard + challenges + notifications (M4)
+· `quizzes` `grade-open` (M1, Slot 9) · `recommendations` (M1, Slot 12)
 
 ### Migrations
 
-`0001` → `0007`, single linear chain, no branching heads. ✅
-`0007_m1_teachback_sessions` adds the Teach-Back table.
-Unused table ready for Slot 9: `review_items` (`models/ai.py:214`, migration `0003`).
+`0001` → `0009`, single linear chain, no branching heads. ✅
+Unused table still waiting for Slot 9: `review_items` (`models/ai.py`,
+migration `0003`).
+
+### Tests
+
+**150 backend tests, all passing.** `test_teachback`, `test_tts`,
+`test_topics_and_jobs`, `test_quiz_generator`, `test_course_planner` and
+`test_progress_queries` are new.
+
+> ⚠️ **M4:** the three XP tests that used to fail now pass, and nothing in
+> `xp_engine.py` or `test_xp_engine.py` was changed — git confirms both are
+> byte-identical. They pass in isolation too. Adding test files changed
+> unittest's discovery order and that was enough to flip them, which means they
+> depend on global state leaking between modules, almost certainly the event
+> handler registry. They are fragile, not fixed.
 
 ---
 
