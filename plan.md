@@ -677,6 +677,28 @@ GET  /api/recommendations/daily-plan   -> {minutes, items: [...]}
 GET  /api/analytics/mastery/me         -> [{topic_tag, mastery_score, attempts}]   (M4 renders this)
 ```
 
+### 6.4a Generated content — amended 2026-09-27
+
+> The catalogue is no longer only seeded. Quizzes are generated per student on
+> request, and courses will follow. Three constraints shaped it, all measured
+> rather than assumed:
+>
+> - **~8.0s per lesson-sized completion**, against a 30s client timeout. A quiz
+>   (one call) is synchronous; a course (~13 calls, ~100s) is not, so anything
+>   that slow goes through `generation_jobs` and `GET /api/jobs/{id}`.
+> - **The free tier is a per-day, per-model request quota**, shared with the
+>   tutor, misconception capture and Teach-Back. Hence a per-user daily cap.
+> - **`topic_tag` is the join key** for mastery, misconceptions, Teach-Back and
+>   the roadmap. Generated tags are resolved against the new `topics` table and
+>   anything unrecognised is dropped. Without that, a model tagging its own
+>   output invents `sql.joins`, `dbms.joins` and `databases.inner_join` for one
+>   idea, each becomes its own mastery row, and the claim that we track a
+>   belief over time quietly becomes false.
+>
+> Personalisation is difficulty (from `topic_mastery`) plus targeting: where a
+> live misconception exists, the questions are written to test that belief
+> instead of sampling the topic and hoping the gap resurfaces.
+
 ### 6.6 Avatar pipeline — two tiers, ship Tier A first
 
 > **Amended 2026-09-22 — Tier A was removed.** Tier B shipped and works, so the

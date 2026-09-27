@@ -461,21 +461,135 @@ def get_attempt(
 
 # ---------------- Member 1: AI generation ----------------
 
+def _generation_user(user: CurrentUser) -> uuid.UUID:
+    try:
+        return uuid.UUID(str(user["id"]))
+    except (KeyError, TypeError, ValueError) as err:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user."
+        ) from err
+
+
+def _spend_generation(db: Session, user_uuid: uuid.UUID, kind: str, params: dict) -> None:
+    """Count this generation against the caller's daily allowance.
+
+    The free tier is a per-day, per-model request quota shared with the tutor,
+    misconception capture and Teach-Back, so one enthusiastic student can spend
+    the whole app's budget. The job row is also the audit trail for what was
+    generated and why.
+    """
+    from app.services.jobs import JobLimitReached, create_job
+
+    try:
+        create_job(db, user_uuid, kind, params)
+    except JobLimitReached as err:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(err)
+        ) from err
+
+
 @router.post("/generate")
-async def generate_quiz(user: CurrentUser, payload: dict) -> dict:
-    """Generate a quiz from a lesson. Returns M2's exact quiz shape.
+async def generate_quiz(
+    user: CurrentUser,
+    payload: dict,
+    db: Session | None = Depends(get_db),
+) -> dict:
+    """Generate a quiz from a lesson, written for this student.
 
     Body: {lesson_id, num_questions=5, difficulty="auto", types=["mcq","true_false"]}
+
+    Difficulty defaults to the caller's mastery of the lesson's topic, and if
+    they are carrying a live misconception about it the questions are aimed at
+    that belief rather than sampling the topic at random. Returns M2's quiz
+    shape with answers stripped, so it can be taken immediately.
+
+    Synchronous: measured at roughly 8s for one call, inside the client's 30s
+    budget. Course generation is the slow one and goes through /api/jobs.
     """
-    # TODO(M1): call services.quiz_generator.generate_quiz, then emit("quiz.generated", ...).
-    return {"id": None, "title": None, "questions": [], "source": "ai_generated"}
+    from app.services.quiz_generator import generate_quiz as _generate
+
+    if db is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database is not configured.",
+        )
+
+    user_uuid = _generation_user(user)
+    lesson_id = (payload or {}).get("lesson_id")
+    if not lesson_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="lesson_id is required."
+        )
+    try:
+        lesson_uuid = uuid.UUID(str(lesson_id))
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid lesson_id."
+        ) from err
+
+    _spend_generation(db, user_uuid, "quiz", {"lesson_id": str(lesson_uuid)})
+
+    try:
+        return await _generate(
+            db,
+            lesson_id=lesson_uuid,
+            user_id=user_uuid,
+            num_questions=(payload or {}).get("num_questions", 5),
+            difficulty=(payload or {}).get("difficulty", "auto"),
+            types=tuple((payload or {}).get("types") or ("mcq", "true_false")),
+        )
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(err)
+        ) from err
+    except RuntimeError as err:
+        # The model returned nothing usable. That is a service problem, not the
+        # student's, and retrying often works.
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(err)
+        ) from err
 
 
 @router.post("/generate/adaptive")
-async def generate_adaptive_quiz(user: CurrentUser, payload: dict) -> dict:
-    """Weak-topic mix drawn from topic_mastery, ignoring lesson scope."""
-    # TODO(M1): pick the lowest-mastery topics, then generate.
-    return {"id": None, "questions": [], "source": "ai_generated"}
+async def generate_adaptive_quiz(
+    user: CurrentUser,
+    payload: dict | None = None,
+    db: Session | None = Depends(get_db),
+) -> dict:
+    """A practice set across this student's weakest topics, ignoring lessons.
+
+    Body: {num_questions=5, types=["mcq","true_false"]}
+
+    Picks the three lowest-mastery topics from topic_mastery and, where one
+    carries a live misconception, targets it - so the set re-tests the belief
+    the app already named instead of hoping it resurfaces by chance.
+    """
+    from app.services.quiz_generator import generate_adaptive_quiz as _generate
+
+    if db is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database is not configured.",
+        )
+
+    user_uuid = _generation_user(user)
+    _spend_generation(db, user_uuid, "quiz", {"adaptive": True})
+
+    try:
+        return await _generate(
+            db,
+            user_id=user_uuid,
+            num_questions=(payload or {}).get("num_questions", 5),
+            types=tuple((payload or {}).get("types") or ("mcq", "true_false")),
+        )
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(err)
+        ) from err
+    except RuntimeError as err:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(err)
+        ) from err
 
 
 @router.post("/attempts/{attempt_id}/grade-open")

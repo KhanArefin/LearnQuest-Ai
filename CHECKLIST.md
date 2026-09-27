@@ -31,11 +31,11 @@ Every `[x]` below was re-checked against the code, not trusted.
 
 | Member | Done | In progress | Open | Total |
 |---|---|---|---|---|
-| **M1** (AI) | 15 | 0 | 26 | 41 |
-| **M2** (Learning) | 12 | 0 | 17 | 29 |
+| **M1** (AI) | 24 | 0 | 17 | 41 |
+| **M2** (Learning) | 12 | 0 | 21 | 33 |
 | **M3** (Users) | 7 | 1 | 14 | 22 |
-| **M4** (Game) | 6 | 0 | 19 | 25 |
-| | **40** | **1** | **76** | **117** | **1** | **62** | **103** | **1** | **61** | **100** | **1** | **61** | **98** | **2** | **68** | **97** |
+| **M4** (Game) | 6 | 0 | 22 | 28 |
+| | **49** | **1** | **74** | **124** | **1** | **70** | **119** | **1** | **76** | **117** | **1** | **62** | **103** | **1** | **61** | **100** | **1** | **61** | **98** | **2** | **68** | **97** |
 
 Plus 4 shared dry-run items in Days 26-28.
 
@@ -263,23 +263,19 @@ generation that feeds them.
 
 Two things have to exist before any generation is safe:
 
-- [ ] **`topic_tags` becomes a real table**, seeded from the 12 in
-      `seed_data.py:28`. Right now the vocabulary lives in a *seed file* and is
-      enforced nowhere at runtime, while `topic_mastery`, misconceptions,
-      Teach-Back and the roadmap all key on the tag. Generation that invents its
-      own tags gives every student a private namespace: the misconception map
-      fragments, nothing accumulates across sessions, and the part of this
-      project that is actually novel stops working — @, 2026-__-__
-- [ ] Generation is constrained to that vocabulary, the same way
-      `roadmap_planner.validate_steps()` already constrains the planner to the
-      real catalogue. Copy that pattern rather than inventing a second one — @, 2026-__-__
-- [ ] **`generation_jobs` table + background runner + `GET /api/jobs/{id}`.**
-      Measured 2026-09-27: **8.0s** for one lesson-sized call, so a six-lesson
-      course is ~100s, and `api/client.js` gives up at **30s**. Anything
-      generative returns a job id immediately and is polled — @, 2026-__-__
-- [ ] Per-user daily generation cap, surfaced as a real error rather than a 500.
-      The free tier is a per-day, per-model request quota and it is shared with
-      the tutor, misconception capture and Teach-Back — @, 2026-__-__
+- [x] **`topics` table** (migration `0009`), seeded with the 12 tags that were
+      living in `seed_data.py`. Verified every tag already in `questions` and
+      `topic_mastery` is covered, so nothing existing was orphaned — @sahilaf, 2026-09-27
+- [x] `services/topics.py::resolve()` drops any tag the vocabulary does not
+      know, the same way `roadmap_planner.validate_steps()` drops a step naming
+      a lesson that does not exist — @sahilaf, 2026-09-27
+- [x] **`generation_jobs` + `GET /api/jobs/{id}`**, plus `reap_stale_jobs()` at
+      startup so a restart mid-generation cannot leave a row polled forever.
+      `main.py` gained one line to register the router — @sahilaf, 2026-09-27
+- [x] Per-user daily cap (`DAILY_JOBS_PER_USER = 20`) returning **429** with a
+      sentence a student can read. Jobs that failed on our side do not consume
+      the allowance. `GET /api/jobs/quota` so the UI can say so *before* the
+      button is pressed — @sahilaf, 2026-09-27
 
 **✅ Hand off when:** a slow generation returns a job id in under a second and
 its result appears when the job finishes.
@@ -291,21 +287,25 @@ its result appears when the job finishes.
 **A quiz built for this student, fresh every attempt** (decided 2026-09-27:
 questions never repeat, which is better practice and costs 1-2 calls, not 13).
 
-- [ ] Implement `services/quiz_generator.py::generate_quiz()` — the stub's
-      docstring already specifies the whole pipeline and its guardrails
-      (`correct_answer` must be one of `options`, no duplicate prompts, cap 10
-      questions, never 500 on a malformed reply) — @, 2026-__-__
-- [ ] Wire `POST /api/quizzes/generate` — the route exists and returns an empty
-      shape today — @, 2026-__-__
-- [ ] `POST /api/quizzes/generate/adaptive` — difficulty from `topic_mastery`
-      (<0.4 easy, 0.4-0.75 medium, >0.75 hard), questions aimed at the student's
-      weakest tags **and at any active misconception**, so the quiz re-tests the
-      belief rather than sampling at random — @, 2026-__-__
-- [ ] Generated quizzes persist with `source="ai_generated"` and emit
-      `quiz.generated` — @, 2026-__-__
-- [ ] The loop closes: wrong answer → misconception → "Learn this" → "Teach
-      Nova" with that misconception pre-loaded. Both ends already exist; this is
-      wiring — @, 2026-__-__
+- [x] `services/quiz_generator.py` implemented to the stub's own spec. The
+      validation is the part that matters: an mcq whose `correct_answer` is not
+      among its `options` can never be answered correctly, and a duplicate
+      prompt lets one misunderstanding cost two marks — both are dropped rather
+      than shipped — @sahilaf, 2026-09-27
+- [x] `POST /api/quizzes/generate` wired. Returns M2's quiz shape with answers
+      stripped, so it can be taken immediately — @sahilaf, 2026-09-27
+- [x] `POST /api/quizzes/generate/adaptive` — three weakest topics from
+      `topic_mastery`, difficulty from the score, and where a live misconception
+      exists the questions are aimed at it. Verified on the real stack: a
+      learner whose recorded belief was *"foreign keys require identical column
+      names"* got a question putting `user_code` against `id` with exactly that
+      belief as the distractor — @sahilaf, 2026-09-27
+- [x] Generated quizzes persist as ordinary rows marked
+      `source="ai_generated"` and emit `quiz.generated`. Nothing downstream —
+      attempts, grading, the misconception engine — knows or cares where the
+      questions came from, which is the point — @sahilaf, 2026-09-27
+- [x] The backend half of the loop is done. The frontend half is M2's, in
+      Slot 9D below — @sahilaf, 2026-09-27
 
 **✅ Hand off when:** two students with different mastery get visibly different
 quizzes on the same topic, and getting one wrong still produces a misconception.
@@ -328,6 +328,45 @@ quizzes on the same topic, and getting one wrong still produces a misconception.
 - [ ] ⚠️ At ~13 calls per course and a per-day free-tier quota, whole-course
       generation caps the whole app near **20 students a day**. Reconsider
       caching by `(topic, difficulty)` here — @, 2026-__-__
+
+---
+
+## 🟢 Slot 9D · Member 2 · Generated quizzes in the UI
+
+**The backend is done and returns your existing quiz shape**, so `QuizPlayer`
+needs no changes at all — take the `id` from the response and route to
+`/quiz/{id}`.
+
+- [ ] **"Practice this lesson"** on the lesson page →
+      `POST /api/quizzes/generate` with `{lesson_id}`. Takes ~8s, so show a
+      loading state; it is inside the 30s client timeout — @, 2026-__-__
+- [ ] **"Practice my weak spots"** on the dashboard →
+      `POST /api/quizzes/generate/adaptive`. No body needed. Picks the three
+      topics this student is weakest at — @, 2026-__-__
+- [ ] Handle **429** as "you have used today's generations", not as a crash.
+      `GET /api/jobs/quota` returns `{used, limit, remaining}` so the button can
+      say so before it is pressed — @, 2026-__-__
+- [ ] After a wrong answer, a **"Learn this"** link from `QuizResult` to the
+      lesson, then **"Teach Nova"** to `/tutor`. Both ends already exist — this
+      is wiring, not new features — @, 2026-__-__
+
+**✅ Hand off when:** a student can generate a quiz aimed at their own weak
+topics and take it without leaving the app.
+**→ Push, then tell M4.**
+
+---
+
+## 🟣 Slot 9E · Member 4 · The misconception map has real data now
+
+Generated quizzes target the belief the app recorded, so mastery actually moves
+instead of sitting still. That makes `Stats.jsx` worth building properly.
+
+- [ ] Misconception map from `GET /api/mastery/me/misconceptions` — active →
+      fading → cleared, with the text of each belief. This is the screen that
+      shows what the product actually does — @, 2026-__-__
+- [ ] Mastery per topic from `GET /api/mastery/me` — @, 2026-__-__
+- [ ] ⚠️ Use M1's `/api/mastery/*`, not `analytics.py`'s `/mastery/me`, which is
+      still a stub returning `{"items": []}` — @, 2026-__-__
 
 ---
 
