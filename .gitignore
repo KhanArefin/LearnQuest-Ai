@@ -75,3 +75,6 @@ htmlcov/
 supabase.txt
 credentials.txt
 *.secrets.txt
+
+# Local editor/agent config - machine-specific, not shared.
+.claude/
