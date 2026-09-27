@@ -93,6 +93,17 @@ def level_from_xp(xp: int) -> int:
 level_for_xp = level_from_xp
 
 
+def _utc_today() -> date:
+    """Today, in the timezone `xp_events.created_at` is written in.
+
+    Deliberately not `date.today()`: that is the machine's LOCAL date, and the
+    timestamps it gets compared against are UTC. East of Greenwich the two
+    disagree for the first hours after local midnight, and every "did this
+    already happen today?" check silently answers no.
+    """
+    return datetime.now(timezone.utc).date()
+
+
 def get_today_tutor_xp(
     db: Session | Any,
     user_id: UUID | str | Any,
@@ -104,7 +115,7 @@ def get_today_tutor_xp(
 
     user_uuid = _normalize_uuid(user_id)
     if local_date is None:
-        local_date = date.today()
+        local_date = _utc_today()
 
     start_of_day = datetime.combine(local_date, datetime.min.time(), tzinfo=timezone.utc)
     end_of_day = datetime.combine(local_date, datetime.max.time(), tzinfo=timezone.utc)
@@ -321,7 +332,7 @@ def update_streak(
             local_date = None
 
     if local_date is None:
-        local_date = date.today()
+        local_date = _utc_today()
 
     try:
         stats = db.query(UserStats).filter(UserStats.user_id == user_uuid).first()
@@ -592,9 +603,9 @@ def on_daily_login(
         try:
             today = date.fromisoformat(str(payload["date"]))
         except ValueError:
-            today = date.today()
+            today = _utc_today()
     else:
-        today = date.today()
+        today = _utc_today()
 
     # Calculate streak bonus on activity
     current_streak = update_streak(db, user_uuid, local_date=today)
