@@ -186,3 +186,45 @@ def generate_conversation_title(user_message: str) -> str:
     if len(clean) <= 40:
         return clean or "New conversation"
     return clean[:37].rsplit(" ", 1)[0] + "..."
+
+
+# --------------------------------------------------------------------------- #
+# Course generation (M1). See services/course_planner.py.
+# --------------------------------------------------------------------------- #
+
+COURSE_OUTLINE_PROMPT = """Design a short course for one learner.
+
+Their goal: {goal}
+
+Every lesson must be tagged with one topic from this list, and ONLY from this
+list. If the goal does not fit any of these topics, return the closest ones
+rather than inventing new tags:
+
+{topic_vocabulary}
+
+Plan {n_lessons} lessons that build on each other in order. Each needs a title
+and a two-sentence summary of what it teaches and why it comes at that point.
+
+Return ONLY JSON:
+{{"title": "...", "description": "one or two sentences",
+  "subject": "...", "difficulty": "beginner" | "intermediate" | "advanced",
+  "estimated_hours": 1,
+  "lessons": [{{"title": "...", "topic_tag": "...", "summary": "..."}}]}}"""
+
+LESSON_CONTENT_PROMPT = """Write one lesson in Markdown for a {difficulty} learner.
+
+Course: {course_title}
+Lesson {position} of {total}: {lesson_title}
+What it should teach: {summary}
+{prior_context}
+Rules:
+- Around 400-600 words. Long enough to actually teach, short enough to finish.
+- Open with the idea in plain language before any formal definition.
+- Use one concrete worked example. For a programming topic include a short
+  fenced code block; otherwise use a small table or a worked case.
+- End with a two-sentence recap of what the reader should now be able to do.
+- Do not include the lesson title as a heading; it is shown above your text.
+- Do not invent facts you are unsure of. If something is genuinely contested,
+  say so plainly rather than picking a side and stating it as settled.
+
+Return ONLY the Markdown. No JSON, no preamble."""

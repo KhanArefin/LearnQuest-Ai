@@ -59,6 +59,7 @@ class EventType:
     COURSE_COMPLETED = "course.completed"  # Emitted by M2 -> {course_id}
     TUTOR_SESSION = "tutor.session"        # Emitted by M1 -> {conversation_id, message_count}
     QUIZ_GENERATED = "quiz.generated"      # Emitted by M1 -> {quiz_id, topic}
+    COURSE_GENERATED = "course.generated"  # Emitted by M1 -> {course_id, slug, lessons, topics}
     DAILY_LOGIN = "daily.login"            # Emitted by M3 -> {}
     STREAK_UPDATED = "streak.updated"      # Emitted by M4 -> {current_streak, longest_streak}
     BADGE_EARNED = "badge.earned"          # Emitted by M4 -> {badge_code, badge_name}
@@ -73,6 +74,7 @@ EVENT_TYPES: set[str] = {
     EventType.COURSE_COMPLETED,
     EventType.TUTOR_SESSION,
     EventType.QUIZ_GENERATED,
+    EventType.COURSE_GENERATED,
     EventType.DAILY_LOGIN,
     EventType.STREAK_UPDATED,
     EventType.BADGE_EARNED,

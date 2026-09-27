@@ -127,6 +127,86 @@ def get_course(
     return course_dict
 
 
+@router.post("/generate", status_code=status.HTTP_202_ACCEPTED)
+async def generate_course(
+    user: CurrentUser,
+    payload: dict,
+    db: Session | None = Depends(get_db),
+) -> dict[str, Any]:
+    """Generate a private course for this learner from a stated goal. (M1)
+
+    Body: {goal, n_lessons=4}
+
+    Returns **202** with a job id, not a course. Generation is an outline call
+    plus one call per lesson - measured at ~8s each, so 50-100s in total, well
+    past the client's 30s timeout. Poll `GET /api/jobs/{job_id}`; on success its
+    `result` carries `{course_id, slug, title, lessons, topics}` and the learner
+    is already enrolled.
+
+    The course is auto-published but private to them and marked
+    `source="ai_generated"`. Nothing verifies that its content is correct - see
+    CHECKLIST Slot 9C.
+
+    Registered here rather than under /api/jobs so it mirrors
+    POST /api/quizzes/generate; the asymmetry is that this one is asynchronous
+    because it is an order of magnitude slower.
+    """
+    from app.services.course_planner import generate_course as _generate
+    from app.services.jobs import JobLimitReached, create_job, schedule
+
+    if db is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database is not configured.",
+        )
+
+    try:
+        user_uuid = uuid.UUID(str(user["id"]))
+    except (KeyError, TypeError, ValueError) as err:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user."
+        ) from err
+
+    goal = str((payload or {}).get("goal") or "").strip()
+    if len(goal) < 4:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Tell us what you want to learn.",
+        )
+
+    n_lessons = (payload or {}).get("n_lessons", 4)
+
+    try:
+        job = create_job(
+            db, user_uuid, "course", {"goal": goal[:400], "n_lessons": n_lessons}
+        )
+    except JobLimitReached as err:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(err)
+        ) from err
+
+    job_id = job.id
+
+    async def _work(job_db, running_job):
+        return await _generate(
+            job_db,
+            user_id=user_uuid,
+            goal=goal,
+            n_lessons=n_lessons,
+            job_id=running_job.id,
+        )
+
+    # The task gets its own session: this request's session closes with the
+    # response, a second from now.
+    schedule(job_id, _work)
+
+    return {
+        "job_id": str(job_id),
+        "status": "queued",
+        "poll": f"/api/jobs/{job_id}",
+    }
+
+
 @router.post("/{course_id}/enroll")
 def enroll(
     course_id: str,

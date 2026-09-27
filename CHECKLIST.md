@@ -31,11 +31,11 @@ Every `[x]` below was re-checked against the code, not trusted.
 
 | Member | Done | In progress | Open | Total |
 |---|---|---|---|---|
-| **M1** (AI) | 24 | 0 | 17 | 41 |
-| **M2** (Learning) | 12 | 0 | 21 | 33 |
+| **M1** (AI) | 27 | 0 | 15 | 42 |
+| **M2** (Learning) | 12 | 0 | 23 | 35 |
 | **M3** (Users) | 7 | 1 | 14 | 22 |
 | **M4** (Game) | 6 | 0 | 22 | 28 |
-| | **49** | **1** | **74** | **124** | **1** | **70** | **119** | **1** | **76** | **117** | **1** | **62** | **103** | **1** | **61** | **100** | **1** | **61** | **98** | **2** | **68** | **97** |
+| | **52** | **1** | **74** | **127** | **1** | **74** | **124** | **1** | **70** | **119** | **1** | **76** | **117** | **1** | **62** | **103** | **1** | **61** | **100** | **1** | **61** | **98** | **2** | **68** | **97** |
 
 Plus 4 shared dry-run items in Days 26-28.
 
@@ -314,20 +314,31 @@ quizzes on the same topic, and getting one wrong still produces a misconception.
 
 ## 🔵 Slot 9C · Member 1 · Generated courses *(after 9A and 9B)*
 
-- [ ] `services/course_planner.py`: goal → outline → lessons, tags drawn only
-      from the vocabulary. `Course` already has `source`, `is_private` and
-      `created_by`, so **no migration is needed** — @, 2026-__-__
-- [ ] Runs as a generation job with progress in the UI — @, 2026-__-__
-- [ ] Courses are auto-published but marked `source="ai_generated"` and private
-      to the student who asked for them (decided 2026-09-27) — @, 2026-__-__
-- [ ] ⚠️ **Nobody checks this content.** The AI writes the lesson, writes a quiz
-      from it, grades it, and names the misconception behind a wrong answer. A
-      wrong lesson means the app confidently teaches wrong material and then
-      diagnoses a false belief about it. Revisit before anyone outside the team
-      uses it — @, 2026-__-__
-- [ ] ⚠️ At ~13 calls per course and a per-day free-tier quota, whole-course
-      generation caps the whole app near **20 students a day**. Reconsider
-      caching by `(topic, difficulty)` here — @, 2026-__-__
+- [x] `services/course_planner.py`: goal → outline → lessons, tags drawn only
+      from the vocabulary. No migration needed — `Course` already had `source`,
+      `is_private` and `created_by` — @sahilaf, 2026-09-27
+- [x] `POST /api/courses/generate` returns **202** with a job id; the work runs
+      behind it on its own session and reports coarse progress. Measured on the
+      real stack: **24.5s for 3 lessons**, which is why it is not synchronous — @sahilaf, 2026-09-27
+- [x] Auto-published, `source="ai_generated"`, private to the student, and they
+      are enrolled automatically — without the enrolment the course appears
+      nowhere they would think to look — @sahilaf, 2026-09-27
+- [ ] ⚠️ **Nobody checks this content.** Still true, and now live: the AI writes
+      the lesson, writes a quiz from it, grades it, and names the misconception
+      behind a wrong answer — four steps, no human. A confidently wrong lesson
+      produces a confident diagnosis of a belief the learner never held.
+      Private + `ai_generated` is containment, not a fix. Revisit before anyone
+      outside the team uses this — @, 2026-__-__
+- [ ] ⚠️ **The quota ceiling is real, not theoretical.** The first live
+      generation ran out of daily quota partway through: lesson 1 came back at
+      3069 chars, lessons 2 and 3 fell back to their outline summaries at ~250.
+      The fallback worked as designed — one failed call costs a thin lesson, not
+      the whole course — but a learner still got two stubs. Caching lessons by
+      `(topic, difficulty)` is the fix; it was deferred on 2026-09-27 in favour
+      of fresh-every-time — @, 2026-__-__
+- [ ] ⚠️ `gemini-3.6-flash` returns **503 Service Unavailable** often enough to
+      fail a whole course through three retries. Widen the backoff, or fall back
+      to a second model, before this is demoed live — @, 2026-__-__
 
 ---
 
@@ -349,6 +360,16 @@ needs no changes at all — take the `id` from the response and route to
 - [ ] After a wrong answer, a **"Learn this"** link from `QuizResult` to the
       lesson, then **"Teach Nova"** to `/tutor`. Both ends already exist — this
       is wiring, not new features — @, 2026-__-__
+
+- [ ] **"Build me a course"** — a goal box on the dashboard →
+      `POST /api/courses/generate` `{goal, n_lessons}`. It returns **202** with
+      `{job_id, poll}`, NOT a course: poll `GET /api/jobs/{job_id}` every couple
+      of seconds and show `progress`. On `succeeded`, `result` carries
+      `{course_id, slug, title, lessons, topics}` and the student is already
+      enrolled — route to `/courses/{slug}` — @, 2026-__-__
+- [ ] Show generated courses as such. `source="ai_generated"` is on the course
+      row; a student should be able to tell written-for-me content from
+      reviewed content at a glance — @, 2026-__-__
 
 **✅ Hand off when:** a student can generate a quiz aimed at their own weak
 topics and take it without leaving the app.
