@@ -24,7 +24,11 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_jwt_secret: str = ""
     supabase_service_role_key: str = ""
-    dev_allow_anonymous: bool = True
+    # Dev escape hatch: requests without a token get a fake user. It must be
+    # opted INTO, never defaulted on - a deploy that forgets to set it would
+    # otherwise serve every endpoint to anonymous callers, and nothing would
+    # look wrong. `is_production` below refuses it outright.
+    dev_allow_anonymous: bool = False
     jwt_leeway_seconds: int = 7200
 
     # --- llm (M1) ---
@@ -49,6 +53,16 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env.lower() in {"production", "prod"}
+
+    @property
+    def allow_anonymous(self) -> bool:
+        """Whether unauthenticated requests get a dev user.
+
+        Never in production, whatever the environment says. The previous code
+        logged an error and then served the request anyway, which is the worst
+        of both: it looks handled in the logs and is wide open in fact.
+        """
+        return self.dev_allow_anonymous and not self.is_production
 
 
 @lru_cache

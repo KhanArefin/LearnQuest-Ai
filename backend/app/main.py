@@ -126,7 +126,13 @@ def _startup() -> None:
     if settings.llm_provider == "mock":
         logger.warning("LLM_PROVIDER=mock - the tutor returns canned responses.")
     if settings.dev_allow_anonymous and settings.is_production:
-        logger.error("DEV_ALLOW_ANONYMOUS is true in production. Turn it off.")
+        # Refused rather than obeyed - see Settings.allow_anonymous. Logged
+        # loudly because a deploy carrying this flag is a misconfiguration
+        # someone needs to fix even though it is no longer dangerous.
+        logger.error(
+            "DEV_ALLOW_ANONYMOUS is true in production. Ignoring it; "
+            "anonymous requests are refused. Remove it from the environment."
+        )
 
 
 @app.on_event("shutdown")

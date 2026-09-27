@@ -292,7 +292,7 @@ def get_current_user(
         try:
             claims = verify_supabase_token(token)
         except Exception as exc:
-            if settings.dev_allow_anonymous:
+            if settings.allow_anonymous:
                 # If token is a JWT from Supabase, extract real claims without signature verification in dev mode
                 try:
                     claims = jwt.decode(token, options={"verify_signature": False})
@@ -329,7 +329,7 @@ def get_current_user(
             default_role="admin" if email == "admin@learnquest.ai" else "student",
         )
 
-    if settings.dev_allow_anonymous:
+    if settings.allow_anonymous:
         dev_id = uuid.UUID(DEV_USER["id"])
         clean_dev_email = DEV_USER["email"].strip().lower()
         return _sync_user_in_db(
