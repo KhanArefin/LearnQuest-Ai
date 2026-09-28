@@ -8,7 +8,7 @@ real implementations - keep the paths, they are the contract other members code 
 
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -150,35 +150,189 @@ my_badges = my_achievements
 
 
 @router.get("/challenges/today")
-def todays_challenges(user: CurrentUser) -> dict:
+def todays_challenges(user: CurrentUser, db: Session | None = Depends(get_db)) -> dict:
     """Three challenges for today with the caller's progress."""
-    # TODO(M4): lazily generate today's set on first request of the day.
-    return {"items": []}
+    if not db or not user or "id" not in user:
+        return {"items": []}
+    try:
+        user_uuid = uuid.UUID(str(user["id"]))
+    except ValueError:
+        return {"items": []}
+
+    from app.services.challenges import get_user_challenges_for_today
+
+    items = get_user_challenges_for_today(db, user_uuid)
+    return {"items": items}
 
 
 @router.post("/challenges/{challenge_id}/claim")
-def claim_challenge(challenge_id: str, user: CurrentUser) -> dict:
-    # TODO(M4): verify completion server-side before awarding.
-    return {"challenge_id": challenge_id, "claimed": False, "xp_awarded": 0}
+def claim_challenge_endpoint(
+    challenge_id: str, user: CurrentUser, db: Session | None = Depends(get_db)
+) -> dict:
+    """Claim reward for a completed daily challenge."""
+    if not db or not user or "id" not in user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated.")
+    try:
+        user_uuid = uuid.UUID(str(user["id"]))
+        ch_uuid = uuid.UUID(challenge_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid ID format.")
+
+    from app.services.challenges import claim_challenge
+
+    try:
+        result = claim_challenge(db, user_uuid, ch_uuid)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.get("/leaderboard")
 def leaderboard(
-    user: CurrentUser, scope: str = "global", period: str = "weekly"
+    user: CurrentUser,
+    scope: str = "global",
+    period: str = "weekly",
+    db: Session | None = Depends(get_db),
 ) -> dict:
-    """Top 50 plus the caller's own rank, pinned even when outside the top 50.
+    """Top 50 plus the caller's own rank, pinned even when outside the top 50."""
+    user_uuid = None
+    if user and "id" in user:
+        try:
+            user_uuid = uuid.UUID(str(user["id"]))
+        except ValueError:
+            user_uuid = None
 
-    Weekly sums xp_events over the window - which is why every award needs an event row.
-    """
-    # TODO(M4): respect preferences.leaderboard_opt_out.
-    return {"items": [], "me": None, "scope": scope, "period": period}
+    if not db:
+        return {"items": [], "me": None, "scope": scope, "period": period}
+
+    # Query top users by XP
+    top_stats = (
+        db.query(UserStats)
+        .order_by(UserStats.xp.desc())
+        .limit(50)
+        .all()
+    )
+
+    items = []
+    for rank, s in enumerate(top_stats, start=1):
+        u_name = "Learner"
+        try:
+            from app.models.user import User as UserModel
+            u = db.query(UserModel).filter(UserModel.id == s.user_id).first()
+            if u and u.full_name:
+                u_name = u.full_name
+        except Exception:
+            pass
+
+        items.append({
+            "rank": rank,
+            "user_id": str(s.user_id),
+            "name": u_name,
+            "xp": s.xp,
+            "level": s.level,
+            "streak": s.current_streak,
+        })
+
+    # Caller's own rank
+    me_entry = None
+    if user_uuid:
+        caller_stat = db.query(UserStats).filter(UserStats.user_id == user_uuid).first()
+        if caller_stat:
+            better_count = db.query(UserStats).filter(UserStats.xp > caller_stat.xp).count()
+            me_entry = {
+                "rank": better_count + 1,
+                "user_id": str(user_uuid),
+                "name": user.get("full_name") or "You",
+                "xp": caller_stat.xp,
+                "level": caller_stat.level,
+                "streak": caller_stat.current_streak,
+            }
+
+    return {"items": items, "me": me_entry, "scope": scope, "period": period}
 
 
 @router.get("/notifications")
-def notifications(user: CurrentUser) -> dict:
-    return {"items": [], "unread": 0}
+def notifications(user: CurrentUser, db: Session | None = Depends(get_db)) -> dict:
+    """In-app notifications for authenticated learner."""
+    if not db or not user or "id" not in user:
+        return {"items": [], "unread": 0}
+    try:
+        user_uuid = uuid.UUID(str(user["id"]))
+    except ValueError:
+        return {"items": [], "unread": 0}
+
+    from app.models.gamification import Notification
+
+    notifs = (
+        db.query(Notification)
+        .filter(Notification.user_id == user_uuid)
+        .order_by(Notification.created_at.desc())
+        .limit(50)
+        .all()
+    )
+    unread_count = (
+        db.query(Notification)
+        .filter(Notification.user_id == user_uuid, Notification.is_read == False)
+        .count()
+    )
+
+    return {
+        "items": [
+            {
+                "id": str(n.id),
+                "type": n.type,
+                "title": n.title,
+                "body": n.body,
+                "is_read": n.is_read,
+                "created_at": n.created_at.isoformat() if n.created_at else None,
+            }
+            for n in notifs
+        ],
+        "unread": unread_count,
+    }
 
 
 @router.post("/notifications/{notification_id}/read")
-def mark_read(notification_id: str, user: CurrentUser) -> dict:
-    return {"id": notification_id, "is_read": True}
+def mark_read(
+    notification_id: str, user: CurrentUser, db: Session | None = Depends(get_db)
+) -> dict:
+    """Mark single notification as read, guarded by user ownership."""
+    if not db or not user or "id" not in user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated.")
+    try:
+        user_uuid = uuid.UUID(str(user["id"]))
+        notif_uuid = uuid.UUID(notification_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid ID.")
+
+    from app.models.gamification import Notification
+
+    notif = db.query(Notification).filter(Notification.id == notif_uuid).first()
+    if not notif:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found.")
+
+    if notif.user_id != user_uuid:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
+
+    notif.is_read = True
+    db.commit()
+    return {"id": str(notif.id), "is_read": True}
+
+
+@router.post("/notifications/read-all")
+def mark_all_read(user: CurrentUser, db: Session | None = Depends(get_db)) -> dict:
+    """Mark all unread notifications as read for current user."""
+    if not db or not user or "id" not in user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated.")
+    try:
+        user_uuid = uuid.UUID(str(user["id"]))
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid ID.")
+
+    from app.models.gamification import Notification
+
+    db.query(Notification).filter(
+        Notification.user_id == user_uuid, Notification.is_read == False
+    ).update({"is_read": True})
+    db.commit()
+    return {"success": True}

@@ -11,10 +11,13 @@ import {
   Users,
   LogOut,
   Trophy,
+  BarChart3,
+  History,
 } from 'lucide-react';
 
 import { useAuth } from '../../context/AuthContext';
 import { StreakFlame, XPBar, BadgeCelebrationModal } from '../game';
+import NotificationBell from './NotificationBell';
 import { myStats } from '../../api/gamification';
 
 /**
@@ -36,10 +39,11 @@ const NAV = [
   { to: '/practice', label: 'Practice', icon: Code2 },
   { to: '/tutor', label: 'AI Tutor', icon: Sparkles },
   { to: '/achievements', label: 'Achievements', icon: Trophy },
+  { to: '/stats', label: 'Stats', icon: BarChart3 },
+  { to: '/history', label: 'History', icon: History },
 ];
 
 // Restore these as each one is built (routes already exist in App.jsx):
-//   { to: '/stats',        label: 'Stats',        icon: BarChart3 }
 //   { to: '/history',      label: 'History',      icon: HistoryIcon }
 // A nav link to a placeholder page is a dead end; one to a missing route 404s.
 
@@ -172,6 +176,8 @@ export default function AppLayout() {
                     <XPBar stats={stats} compact />
                   </div>
                 )}
+
+                <NotificationBell />
 
                 <NavLink
                   to="/profile"

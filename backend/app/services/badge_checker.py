@@ -153,11 +153,198 @@ def evaluate_stat_criteria(
     }
 
 
+def evaluate_quiz_score_criteria(
+    db: Session | Any,
+    user_id: UUID,
+    criteria: dict[str, Any],
+) -> dict[str, Any]:
+    """Evaluate quiz score criteria (e.g. perfect score = 100%)."""
+    if db is None:
+        return {"current": 0, "target": 100, "percentage": 0, "satisfied": False, "unit": "%"}
+    threshold = float(criteria.get("threshold", 100))
+    highest_score = 0.0
+    try:
+        from app.models.learning import QuizAttempt
+
+        highest = (
+            db.query(QuizAttempt.score)
+            .filter(QuizAttempt.user_id == user_id, QuizAttempt.score.isnot(None))
+            .order_by(QuizAttempt.score.desc())
+            .first()
+        )
+        if highest and highest[0] is not None:
+            highest_score = float(highest[0])
+    except Exception:
+        highest_score = 0.0
+
+    satisfied = highest_score >= threshold
+    pct = min(100, int((highest_score / threshold) * 100)) if threshold > 0 else 100
+    return {
+        "current": int(highest_score),
+        "target": int(threshold),
+        "percentage": pct,
+        "satisfied": satisfied,
+        "unit": "%",
+    }
+
+
+def evaluate_time_of_day_criteria(
+    db: Session | Any,
+    user_id: UUID,
+    criteria: dict[str, Any],
+) -> dict[str, Any]:
+    """Evaluate time of day criteria (e.g. night_owl: 22 to 4, early_bird: 4 to 8)."""
+    if db is None:
+        return {"current": 0, "target": 1, "percentage": 0, "satisfied": False, "unit": "activity"}
+    start_hour = int(criteria.get("start_hour", 22))
+    end_hour = int(criteria.get("end_hour", 4))
+
+    events = (
+        db.query(XPEvent.created_at)
+        .filter(XPEvent.user_id == user_id)
+        .order_by(XPEvent.created_at.desc())
+        .limit(50)
+        .all()
+    )
+    satisfied = False
+    for (created_at,) in events:
+        if not created_at:
+            continue
+        hour = created_at.hour
+        if start_hour > end_hour:  # wraps past midnight (e.g. 22 to 4)
+            if hour >= start_hour or hour < end_hour:
+                satisfied = True
+                break
+        else:  # within same day (e.g. 4 to 8)
+            if start_hour <= hour < end_hour:
+                satisfied = True
+                break
+
+    return {
+        "current": 1 if satisfied else 0,
+        "target": 1,
+        "percentage": 100 if satisfied else 0,
+        "satisfied": satisfied,
+        "unit": "activity",
+    }
+
+
+def evaluate_tutor_messages_criteria(
+    db: Session | Any,
+    user_id: UUID,
+    criteria: dict[str, Any],
+) -> dict[str, Any]:
+    """Evaluate tutor messages count criteria (e.g. curious_mind_50_msgs: 50 msgs)."""
+    if db is None:
+        return {"current": 0, "target": 50, "percentage": 0, "satisfied": False, "unit": "messages"}
+    threshold = int(criteria.get("threshold", 50))
+    count = 0
+    try:
+        from app.models.ai import Conversation, Message
+
+        count = (
+            db.query(Message)
+            .join(Conversation, Message.conversation_id == Conversation.id)
+            .filter(Conversation.user_id == user_id, Message.role == "user")
+            .count()
+        )
+    except Exception:
+        count = (
+            db.query(XPEvent)
+            .filter(XPEvent.user_id == user_id, XPEvent.event_type == "tutor.session")
+            .count()
+        )
+
+    pct = min(100, int((count / threshold) * 100)) if threshold > 0 else 100
+    return {
+        "current": count,
+        "target": threshold,
+        "percentage": pct,
+        "satisfied": count >= threshold,
+        "unit": "messages",
+    }
+
+
+def evaluate_topic_mastery_criteria(
+    db: Session | Any,
+    user_id: UUID,
+    criteria: dict[str, Any],
+) -> dict[str, Any]:
+    """Evaluate topic mastery criteria (e.g. topic_master: mastery >= 0.9)."""
+    if db is None:
+        return {"current": 0, "target": 90, "percentage": 0, "satisfied": False, "unit": "%"}
+    threshold = float(criteria.get("threshold", 0.9))
+    max_mastery = 0.0
+    try:
+        from app.models.ai import TopicMastery
+
+        highest = (
+            db.query(TopicMastery.mastery_score)
+            .filter(TopicMastery.user_id == user_id)
+            .order_by(TopicMastery.mastery_score.desc())
+            .first()
+        )
+        if highest and highest[0] is not None:
+            max_mastery = float(highest[0])
+    except Exception:
+        pass
+
+    satisfied = max_mastery >= threshold
+    pct = min(100, int((max_mastery / threshold) * 100)) if threshold > 0 else 100
+    return {
+        "current": int(max_mastery * 100),
+        "target": int(threshold * 100),
+        "percentage": pct,
+        "satisfied": satisfied,
+        "unit": "%",
+    }
+
+
+def evaluate_comeback_criteria(
+    db: Session | Any,
+    user_id: UUID,
+    criteria: dict[str, Any],
+) -> dict[str, Any]:
+    """Evaluate comeback criteria (returned after 7+ idle days)."""
+    if db is None:
+        return {"current": 0, "target": 7, "percentage": 0, "satisfied": False, "unit": "days"}
+    threshold_days = int(criteria.get("threshold_days", 7))
+    satisfied = False
+    try:
+        events = (
+            db.query(XPEvent.created_at)
+            .filter(XPEvent.user_id == user_id)
+            .order_by(XPEvent.created_at.asc())
+            .all()
+        )
+        if len(events) >= 2:
+            for i in range(1, len(events)):
+                delta = events[i][0] - events[i - 1][0]
+                if delta.days >= threshold_days:
+                    satisfied = True
+                    break
+    except Exception:
+        pass
+
+    return {
+        "current": threshold_days if satisfied else 0,
+        "target": threshold_days,
+        "percentage": 100 if satisfied else 0,
+        "satisfied": satisfied,
+        "unit": "days",
+    }
+
+
 # Registry of data-driven criteria evaluators
 CRITERIA_EVALUATORS = {
     "count": evaluate_count_criteria,
     "streak": evaluate_streak_criteria,
     "stat": evaluate_stat_criteria,
+    "quiz_score": evaluate_quiz_score_criteria,
+    "time_of_day": evaluate_time_of_day_criteria,
+    "tutor_messages": evaluate_tutor_messages_criteria,
+    "topic_mastery": evaluate_topic_mastery_criteria,
+    "comeback": evaluate_comeback_criteria,
 }
 
 
@@ -309,9 +496,11 @@ def check_badges(
             .filter(UserBadge.user_id == user_uuid)
             .subquery()
         )
+        from sqlalchemy import select
+
         unearned_badges = (
             db.query(Badge)
-            .filter(~Badge.id.in_(earned_subquery))
+            .filter(~Badge.id.in_(select(earned_subquery.c.badge_id)))
             .all()
         )
 
@@ -377,6 +566,46 @@ def on_course_completed_check_badges(
     return check_badges(db, user_id, "course.completed", payload)
 
 
+@register_handler("tutor.session")
+def on_tutor_session_check_badges(
+    db: Session | Any,
+    user_id: Any,
+    payload: dict[str, Any],
+) -> list[Badge]:
+    """Check badges on tutor session."""
+    return check_badges(db, user_id, "tutor.session", payload)
+
+
+@register_handler("teachback.completed")
+def on_teachback_completed_check_badges(
+    db: Session | Any,
+    user_id: Any,
+    payload: dict[str, Any],
+) -> list[Badge]:
+    """Check badges on teachback completed."""
+    return check_badges(db, user_id, "teachback.completed", payload)
+
+
+@register_handler("daily.login")
+def on_daily_login_check_badges(
+    db: Session | Any,
+    user_id: Any,
+    payload: dict[str, Any],
+) -> list[Badge]:
+    """Check badges on daily login."""
+    return check_badges(db, user_id, "daily.login", payload)
+
+
+@register_handler("roadmap.node_completed")
+def on_roadmap_node_completed_check_badges(
+    db: Session | Any,
+    user_id: Any,
+    payload: dict[str, Any],
+) -> list[Badge]:
+    """Check badges on roadmap node completion."""
+    return check_badges(db, user_id, "roadmap.node_completed", payload)
+
+
 def register_badge_handlers() -> None:
     """Register all badge checker event handlers with the Event Bus.
 
@@ -389,6 +618,10 @@ def register_badge_handlers() -> None:
         "streak.updated": on_streak_updated_check_badges,
         "quiz.submitted": on_quiz_submitted_check_badges,
         "course.completed": on_course_completed_check_badges,
+        "tutor.session": on_tutor_session_check_badges,
+        "teachback.completed": on_teachback_completed_check_badges,
+        "daily.login": on_daily_login_check_badges,
+        "roadmap.node_completed": on_roadmap_node_completed_check_badges,
     }
     for event_type, handler_func in handlers_map.items():
         if handler_func not in HANDLERS.get(event_type, []):

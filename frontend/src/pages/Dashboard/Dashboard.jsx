@@ -1,3 +1,4 @@
+
 /**
  * Dashboard - OWNER: Member 2. See plan.md §7.2, §7.4.
  *
@@ -35,7 +36,7 @@ import {
   Select,
   Spinner,
 } from '../../components/ui';
-import { StreakFlame, XPBar } from '../../components/game';
+import { StreakFlame, XPBar, DailyChallenges } from '../../components/game';
 
 const N_LESSONS_OPTIONS = [
   { value: '3', label: '3 Lessons (Quick intro)' },
@@ -388,6 +389,8 @@ export default function Dashboard() {
         </Card>
       )}
 
+      {/* 2.5 Daily Challenges */}
+      <DailyChallenges onClaimed={() => myStats().then(setStats).catch(() => {})} />
       {/* AI Generative Learning: Practice Weak Spots & Build Me a Course (Slot 9D) */}
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -542,272 +545,271 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 3. In-Progress Learning Tracks (Course Progress) */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-ink">
-              Enrolled Tracks & Progress
-            </h2>
-            <p className="text-xs text-muted">
-              Track your module completion rate and continue current tracks.
-            </p>
-          </div>
-          <Link
-            to="/courses"
-            className="text-xs font-semibold text-primary-600 hover:text-primary-700"
-          >
-            Browse All Tracks →
-          </Link>
-        </div>
-
-        {progressItems.length === 0 ? (
-          <EmptyState
-            title="No enrolled tracks"
-            description="Enroll in a track from the course catalog to start tracking your progress here."
-            action={
-              <Link to="/courses">
-                <Button variant="primary" size="sm">
-                  Find a Track
-                </Button>
-              </Link>
-            }
-          />
-        ) : (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {progressItems.map((track) => {
-              const pct = track.completion_percentage ?? 0;
-              const isDone = pct >= 100;
-              const nextId = track.next_lesson_id;
-
-              return (
-                <Card
-                  key={track.course_id}
-                  className="flex flex-col justify-between gap-4 p-5 hover:border-line-strong transition-colors"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <Badge tone="default" className="text-[10px]">
-                            {track.subject || 'Track'}
-                          </Badge>
-                          <Badge tone={getDifficultyTone(track.difficulty)} className="text-[10px]">
-                            {track.difficulty || 'beginner'}
-                          </Badge>
-                          {track.source === 'ai_generated' && (
-                            <Badge tone="info" className="text-[10px]">AI Generated</Badge>
-                          )}
-                        </div>
-                        <h3 className="mt-1.5 font-bold text-ink">
-                          {track.course_title}
-                        </h3>
-                      </div>
-                      <Badge tone={isDone ? 'easy' : 'default'}>
-                        {isDone ? 'Completed' : `${pct}%`}
-                      </Badge>
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs text-muted">
-                        <span>Progress</span>
-                        <span>
-                          {track.completed_lessons} of {track.total_lessons} lessons ({pct}%)
-                        </span>
-                      </div>
-                      <ProgressBar value={pct} tone={isDone ? 'easy' : 'default'} size="sm" />
-                    </div>
-
-                    {track.next_lesson_title && !isDone && (
-                      <div className="rounded bg-raised p-2 text-xs text-body">
-                        <span className="font-semibold text-ink">Up next:</span>{' '}
-                        {track.next_lesson_title}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between border-t border-line pt-3">
-                    <Link
-                      to={`/courses/${track.course_slug}`}
-                      className="text-xs font-semibold text-muted hover:text-ink"
-                    >
-                      Track Details
-                    </Link>
-                    {nextId ? (
-                      <Link to={`/lessons/${nextId}`}>
-                        <Button variant={isDone ? 'secondary' : 'primary'} size="sm">
-                          {isDone ? 'Review' : 'Continue →'}
-                        </Button>
-                      </Link>
-                    ) : (
-                      <Link to={`/courses/${track.course_slug}`}>
-                        <Button variant="secondary" size="sm">
-                          View Track
-                        </Button>
-                      </Link>
-                    )}
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
-        )}
+  {/* 3. In-Progress Learning Tracks (Course Progress) */ }
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <div>
+        <h2 className="text-lg font-bold text-ink">
+          Enrolled Tracks & Progress
+        </h2>
+        <p className="text-xs text-muted">
+          Track your module completion rate and continue current tracks.
+        </p>
       </div>
+      <Link
+        to="/courses"
+        className="text-xs font-semibold text-primary-600 hover:text-primary-700"
+      >
+        Browse All Tracks →
+      </Link>
+    </div>
 
-      {/* 4. Two Column Layout: Recent Activity & Explore Tracks */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        {/* Left 2 Cols: Recent Activity */}
-        <div className="space-y-4 lg:col-span-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-bold text-ink">
-                Recent Learning Activity
-              </h2>
-              <p className="text-xs text-muted">
-                Your latest completed lessons and practice quiz results.
-              </p>
-            </div>
-            <Link
-              to="/history"
-              className="text-xs font-semibold text-primary-600 hover:text-primary-700"
+    {progressItems.length === 0 ? (
+      <EmptyState
+        title="No enrolled tracks"
+        description="Enroll in a track from the course catalog to start tracking your progress here."
+        action={
+          <Link to="/courses">
+            <Button variant="primary" size="sm">
+              Find a Track
+            </Button>
+          </Link>
+        }
+      />
+    ) : (
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {progressItems.map((track) => {
+          const pct = track.completion_percentage ?? 0;
+          const isDone = pct >= 100;
+          const nextId = track.next_lesson_id;
+
+          return (
+            <Card
+              key={track.course_id}
+              className="flex flex-col justify-between gap-4 p-5 hover:border-line-strong transition-colors"
             >
-              Full History →
-            </Link>
-          </div>
-
-          {historyItems.length === 0 ? (
-            <EmptyState
-              title="No recent activity"
-              description="Start reading a lesson or take a quiz to begin your learning timeline."
-              action={
-                <Link to="/courses">
-                  <Button variant="secondary" size="sm">
-                    Browse Tracks
-                  </Button>
-                </Link>
-              }
-            />
-          ) : (
-            <div className="space-y-2.5">
-              {historyItems.map((item) => {
-                const isLesson = item.item_type === 'lesson';
-                const isQuiz = item.item_type === 'quiz';
-
-                return (
-                  <Card
-                    key={`${item.item_type}-${item.id}`}
-                    className="flex flex-col gap-3 p-3.5 transition-colors hover:border-line-strong sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="flex items-start gap-3">
-                      <span
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
-                          isLesson
-                            ? 'bg-info-bg text-info-fg'
-                            : 'bg-primary-500/15 text-primary-600'
-                        }`}
-                      >
-                        {isLesson ? '📖' : '⚡'}
-                      </span>
-
-                      <div className="space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-ink">
-                            {item.title}
-                          </span>
-                          {isLesson && (
-                            <Badge
-                              tone={item.status === 'completed' ? 'easy' : 'default'}
-                              className="text-[10px]"
-                            >
-                              {item.status === 'completed' ? 'Completed' : 'In Progress'}
-                            </Badge>
-                          )}
-                          {isQuiz && (
-                            <Badge
-                              tone={item.passed ? 'easy' : 'danger'}
-                              className="text-[10px]"
-                            >
-                              {item.passed ? `Passed (${item.score}%)` : `Score: ${item.score}%`}
-                            </Badge>
-                          )}
-                        </div>
-
-                        <div className="text-xs text-muted">
-                          {item.course_title && <span>{item.course_title} • </span>}
-                          {formatDate(item.completed_at)}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex shrink-0 items-center justify-end">
-                      {isLesson && item.lesson_id && (
-                        <Link to={`/lessons/${item.lesson_id}`}>
-                          <Button variant="ghost" size="sm" className="text-xs">
-                            View Lesson
-                          </Button>
-                        </Link>
-                      )}
-                      {isQuiz && item.attempt_id && (
-                        <Link to={`/quiz/attempts/${item.attempt_id}`}>
-                          <Button variant="ghost" size="sm" className="text-xs">
-                            Review Attempt
-                          </Button>
-                        </Link>
-                      )}
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Right Col: Explore Other Tracks */}
-        <div className="space-y-4">
-          <div>
-            <h2 className="text-lg font-bold text-ink">
-              Explore Tracks
-            </h2>
-            <p className="text-xs text-muted">Expand into new computer science subjects.</p>
-          </div>
-
-          {availableCourses.length === 0 ? (
-            <EmptyState
-              title="No courses available"
-              description="New tracks will appear here once published."
-            />
-          ) : (
-            <div className="space-y-3">
-              {availableCourses.slice(0, 3).map((c) => (
-                <Card key={c.id} className="space-y-2 p-3.5">
-                  <div className="flex items-start justify-between gap-2">
-                    <h4 className="text-sm font-bold text-ink">
-                      {c.title}
-                    </h4>
-                    <div className="flex items-center gap-1.5">
-                      {c.source === 'ai_generated' && (
+              <div className="space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Badge tone="default" className="text-[10px]">
+                        {track.subject || 'Track'}
+                      </Badge>
+                      <Badge tone={getDifficultyTone(track.difficulty)} className="text-[10px]">
+                        {track.difficulty || 'beginner'}
+                      </Badge>
+                      {track.source === 'ai_generated' && (
                         <Badge tone="info" className="text-[10px]">AI Generated</Badge>
                       )}
-                      <Badge tone={getDifficultyTone(c.difficulty)} className="text-[10px]">
-                        {c.difficulty || 'beginner'}
-                      </Badge>
+                    </div>
+                    <h3 className="mt-1.5 font-bold text-ink">
+                      {track.course_title}
+                    </h3>
+                  </div>
+                  <Badge tone={isDone ? 'easy' : 'default'}>
+                    {isDone ? 'Completed' : `${pct}%`}
+                  </Badge>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-muted">
+                    <span>Progress</span>
+                    <span>
+                      {track.completed_lessons} of {track.total_lessons} lessons ({pct}%)
+                    </span>
+                  </div>
+                  <ProgressBar value={pct} tone={isDone ? 'easy' : 'default'} size="sm" />
+                </div>
+
+                {track.next_lesson_title && !isDone && (
+                  <div className="rounded bg-raised p-2 text-xs text-body">
+                    <span className="font-semibold text-ink">Up next:</span>{' '}
+                    {track.next_lesson_title}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between border-t border-line pt-3">
+                <Link
+                  to={`/courses/${track.course_slug}`}
+                  className="text-xs font-semibold text-muted hover:text-ink"
+                >
+                  Track Details
+                </Link>
+                {nextId ? (
+                  <Link to={`/lessons/${nextId}`}>
+                    <Button variant={isDone ? 'secondary' : 'primary'} size="sm">
+                      {isDone ? 'Review' : 'Continue →'}
+                    </Button>
+                  </Link>
+                ) : (
+                  <Link to={`/courses/${track.course_slug}`}>
+                    <Button variant="secondary" size="sm">
+                      View Track
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    )}
+  </div>
+
+  {/* 4. Two Column Layout: Recent Activity & Explore Tracks */ }
+  <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+    {/* Left 2 Cols: Recent Activity */}
+    <div className="space-y-4 lg:col-span-2">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-bold text-ink">
+            Recent Learning Activity
+          </h2>
+          <p className="text-xs text-muted">
+            Your latest completed lessons and practice quiz results.
+          </p>
+        </div>
+        <Link
+          to="/history"
+          className="text-xs font-semibold text-primary-600 hover:text-primary-700"
+        >
+          Full History →
+        </Link>
+      </div>
+
+      {historyItems.length === 0 ? (
+        <EmptyState
+          title="No recent activity"
+          description="Start reading a lesson or take a quiz to begin your learning timeline."
+          action={
+            <Link to="/courses">
+              <Button variant="secondary" size="sm">
+                Browse Tracks
+              </Button>
+            </Link>
+          }
+        />
+      ) : (
+        <div className="space-y-2.5">
+          {historyItems.map((item) => {
+            const isLesson = item.item_type === 'lesson';
+            const isQuiz = item.item_type === 'quiz';
+
+            return (
+              <Card
+                key={`${item.item_type}-${item.id}`}
+                className="flex flex-col gap-3 p-3.5 transition-colors hover:border-line-strong sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="flex items-start gap-3">
+                  <span
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${isLesson
+                        ? 'bg-info-bg text-info-fg'
+                        : 'bg-primary-500/15 text-primary-600'
+                      }`}
+                  >
+                    {isLesson ? '📖' : '⚡'}
+                  </span>
+
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-ink">
+                        {item.title}
+                      </span>
+                      {isLesson && (
+                        <Badge
+                          tone={item.status === 'completed' ? 'easy' : 'default'}
+                          className="text-[10px]"
+                        >
+                          {item.status === 'completed' ? 'Completed' : 'In Progress'}
+                        </Badge>
+                      )}
+                      {isQuiz && (
+                        <Badge
+                          tone={item.passed ? 'easy' : 'danger'}
+                          className="text-[10px]"
+                        >
+                          {item.passed ? `Passed (${item.score}%)` : `Score: ${item.score}%`}
+                        </Badge>
+                      )}
+                    </div>
+
+                    <div className="text-xs text-muted">
+                      {item.course_title && <span>{item.course_title} • </span>}
+                      {formatDate(item.completed_at)}
                     </div>
                   </div>
-                  <p className="line-clamp-2 text-xs text-muted">{c.description}</p>
-                  <div className="flex justify-end pt-1">
-                    <Link to={`/courses/${c.slug}`}>
-                      <Button variant="secondary" size="sm" className="text-xs">
-                        View Track →
+                </div>
+
+                <div className="flex shrink-0 items-center justify-end">
+                  {isLesson && item.lesson_id && (
+                    <Link to={`/lessons/${item.lesson_id}`}>
+                      <Button variant="ghost" size="sm" className="text-xs">
+                        View Lesson
                       </Button>
                     </Link>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
+                  )}
+                  {isQuiz && item.attempt_id && (
+                    <Link to={`/quiz/attempts/${item.attempt_id}`}>
+                      <Button variant="ghost" size="sm" className="text-xs">
+                        Review Attempt
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
         </div>
-      </div>
+      )}
     </div>
+
+    {/* Right Col: Explore Other Tracks */}
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-lg font-bold text-ink">
+          Explore Tracks
+        </h2>
+        <p className="text-xs text-muted">Expand into new computer science subjects.</p>
+      </div>
+
+      {availableCourses.length === 0 ? (
+        <EmptyState
+          title="No courses available"
+          description="New tracks will appear here once published."
+        />
+      ) : (
+        <div className="space-y-3">
+          {availableCourses.slice(0, 3).map((c) => (
+            <Card key={c.id} className="space-y-2 p-3.5">
+              <div className="flex items-start justify-between gap-2">
+                <h4 className="text-sm font-bold text-ink">
+                  {c.title}
+                </h4>
+                <div className="flex items-center gap-1.5">
+                  {c.source === 'ai_generated' && (
+                    <Badge tone="info" className="text-[10px]">AI Generated</Badge>
+                  )}
+                  <Badge tone={getDifficultyTone(c.difficulty)} className="text-[10px]">
+                    {c.difficulty || 'beginner'}
+                  </Badge>
+                </div>
+              </div>
+              <p className="line-clamp-2 text-xs text-muted">{c.description}</p>
+              <div className="flex justify-end pt-1">
+                <Link to={`/courses/${c.slug}`}>
+                  <Button variant="secondary" size="sm" className="text-xs">
+                    View Track →
+                  </Button>
+                </Link>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+    </div >
   );
 }
 
