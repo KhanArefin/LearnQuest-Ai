@@ -389,10 +389,8 @@ export default function Dashboard() {
         </Card>
       )}
 
-<<<<<<< HEAD
-  {/* 2.5 Daily Challenges */ }
-  <DailyChallenges onClaimed={() => myStats().then(setStats).catch(() => { })} />
-=======
+      {/* 2.5 Daily Challenges */}
+      <DailyChallenges onClaimed={() => myStats().then(setStats).catch(() => {})} />
       {/* AI Generative Learning: Practice Weak Spots & Build Me a Course (Slot 9D) */}
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -546,7 +544,6 @@ export default function Dashboard() {
           </Card>
         </div>
       </div>
->>>>>>> upstream/main
 
   {/* 3. In-Progress Learning Tracks (Course Progress) */ }
   <div className="space-y-4">

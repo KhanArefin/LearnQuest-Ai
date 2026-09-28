@@ -103,13 +103,8 @@ Every `[x]` below was re-checked against the code, not trusted.
 | **M1** (AI) | 27 | 0 | 15 | 42 |
 | **M2** (Learning) | 29 | 0 | 6 | 35 |
 | **M3** (Users) | 7 | 1 | 14 | 22 |
-<<<<<<< HEAD
 | **M4** (Game) | 22 | 0 | 6 | 28 |
-| **Total** | **68** | **1** | **58** | **127** |
-=======
-| **M4** (Game) | 6 | 0 | 22 | 28 |
-| **Total** | **69** | **1** | **57** | **127** |
->>>>>>> upstream/main
+| **Total** | **85** | **1** | **41** | **127** |
 
 Plus 4 shared dry-run items in Days 26-28.
 
