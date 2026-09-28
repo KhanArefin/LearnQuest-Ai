@@ -101,10 +101,10 @@ Every `[x]` below was re-checked against the code, not trusted.
 | Member | Done | In progress | Open | Total |
 |---|---|---|---|---|
 | **M1** (AI) | 27 | 0 | 15 | 42 |
-| **M2** (Learning) | 12 | 0 | 23 | 35 |
+| **M2** (Learning) | 29 | 0 | 6 | 35 |
 | **M3** (Users) | 7 | 1 | 14 | 22 |
 | **M4** (Game) | 6 | 0 | 22 | 28 |
-| **Total** | **52** | **1** | **74** | **127** |
+| **Total** | **69** | **1** | **57** | **127** |
 
 Plus 4 shared dry-run items in Days 26-28.
 
@@ -484,28 +484,28 @@ quizzes on the same topic, and getting one wrong still produces a misconception.
 needs no changes at all — take the `id` from the response and route to
 `/quiz/{id}`.
 
-- [ ] **"Practice this lesson"** on the lesson page →
+- [x] **"Practice this lesson"** on the lesson page →
       `POST /api/quizzes/generate` with `{lesson_id}`. Takes ~8s, so show a
-      loading state; it is inside the 30s client timeout — @, 2026-__-__
-- [ ] **"Practice my weak spots"** on the dashboard →
+      loading state; it is inside the 30s client timeout — @skredwanulislam, 2026-09-28
+- [x] **"Practice my weak spots"** on the dashboard →
       `POST /api/quizzes/generate/adaptive`. No body needed. Picks the three
-      topics this student is weakest at — @, 2026-__-__
-- [ ] Handle **429** as "you have used today's generations", not as a crash.
+      topics this student is weakest at — @skredwanulislam, 2026-09-28
+- [x] Handle **429** as "you have used today's generations", not as a crash.
       `GET /api/jobs/quota` returns `{used, limit, remaining}` so the button can
-      say so before it is pressed — @, 2026-__-__
-- [ ] After a wrong answer, a **"Learn this"** link from `QuizResult` to the
+      say so before it is pressed — @skredwanulislam, 2026-09-28
+- [x] After a wrong answer, a **"Learn this"** link from `QuizResult` to the
       lesson, then **"Teach Nova"** to `/tutor`. Both ends already exist — this
-      is wiring, not new features — @, 2026-__-__
+      is wiring, not new features — @skredwanulislam, 2026-09-28
 
-- [ ] **"Build me a course"** — a goal box on the dashboard →
+- [x] **"Build me a course"** — a goal box on the dashboard →
       `POST /api/courses/generate` `{goal, n_lessons}`. It returns **202** with
       `{job_id, poll}`, NOT a course: poll `GET /api/jobs/{job_id}` every couple
       of seconds and show `progress`. On `succeeded`, `result` carries
       `{course_id, slug, title, lessons, topics}` and the student is already
-      enrolled — route to `/courses/{slug}` — @, 2026-__-__
-- [ ] Show generated courses as such. `source="ai_generated"` is on the course
+      enrolled — route to `/courses/{slug}` — @skredwanulislam, 2026-09-28
+- [x] Show generated courses as such. `source="ai_generated"` is on the course
       row; a student should be able to tell written-for-me content from
-      reviewed content at a glance — @, 2026-__-__
+      reviewed content at a glance — @skredwanulislam, 2026-09-28
 
 **✅ Hand off when:** a student can generate a quiz aimed at their own weak
 topics and take it without leaving the app.
@@ -557,13 +557,13 @@ on the right day mixed with other topics.
 
 **Practice problems + the review screen.**
 
-- [ ] `/practice` route + restore the nav entry (commented out at `AppLayout.jsx:36`) — @, 2026-__-__
-- [ ] Problem page: statement, input/output examples, test cases — @, 2026-__-__
-- [ ] Submit → pass/fail per test case, stored as an attempt — @, 2026-__-__
-- [ ] "Skill verified" once N problems in a skill pass — @, 2026-__-__
-- [ ] **Review screen** driven by M1's `/api/review/today` — one card at a time — @, 2026-__-__
-- [ ] Free-response question type in `QuizPlayer` (textarea + M1's grader) — @, 2026-__-__
-- [ ] Mobile pass over Courses / Lesson / Quiz — @, 2026-__-__
+- [x] `/practice` route + restore the nav entry (commented out at `AppLayout.jsx:36`) — @skredwanulislam, 2026-09-28
+- [x] Problem page: statement, input/output examples, test cases — @skredwanulislam, 2026-09-28
+- [x] Submit → pass/fail per test case, stored as an attempt — @skredwanulislam, 2026-09-28
+- [x] "Skill verified" once N problems in a skill pass — @skredwanulislam, 2026-09-28
+- [x] **Review screen** driven by M1's `/api/review/today` — one card at a time — @skredwanulislam, 2026-09-28
+- [x] Free-response question type in `QuizPlayer` (textarea + M1's grader) — @skredwanulislam, 2026-09-28
+- [x] Mobile pass over Courses / Lesson / Quiz — @skredwanulislam, 2026-09-28
 
 **→ Push, then tell M3.**
 
@@ -626,10 +626,10 @@ is when you will see it again, and here is the proof you fixed it."*
 
 ## 🟢 Slot 14 · Member 2 · Days 22–23
 
-- [ ] Empty state on every list and table — @, 2026-__-__
-- [ ] Loading + error state on every page that fetches — @, 2026-__-__
-- [ ] Full mobile pass at 375px — @, 2026-__-__
-- [ ] Bug fixing from the Week 3 integration list — @, 2026-__-__
+- [x] Empty state on every list and table — @skredwanulislam, 2026-09-28
+- [x] Loading + error state on every page that fetches — @skredwanulislam, 2026-09-28
+- [x] Full mobile pass at 375px — @skredwanulislam, 2026-09-28
+- [x] Bug fixing from the Week 3 integration list — @skredwanulislam, 2026-09-28
 - [x] **N+1 in `/api/me/progress` and `/api/me/enrollments` fixed** — both now
       prefetch the user's `lesson_progress` once (`_progress_by_lesson`) instead
       of querying per enrolled course. Measured flat at **2 queries** for 1, 5,

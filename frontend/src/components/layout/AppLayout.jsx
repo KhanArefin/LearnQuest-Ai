@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Map,
   BookOpen,
+  Code2,
   Sparkles,
   Shield,
   Users,
@@ -32,6 +33,7 @@ const NAV = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/roadmap', label: 'Roadmap', icon: Map },
   { to: '/courses', label: 'Courses', icon: BookOpen },
+  { to: '/practice', label: 'Practice', icon: Code2 },
   { to: '/tutor', label: 'AI Tutor', icon: Sparkles },
   { to: '/achievements', label: 'Achievements', icon: Trophy },
 ];
@@ -39,7 +41,6 @@ const NAV = [
 // Restore these as each one is built (routes already exist in App.jsx):
 //   { to: '/stats',        label: 'Stats',        icon: BarChart3 }
 //   { to: '/history',      label: 'History',      icon: HistoryIcon }
-//   { to: '/practice',     label: 'Practice',     icon: Code2 }
 // A nav link to a placeholder page is a dead end; one to a missing route 404s.
 
 const MOBILE_NAV = NAV.slice(0, 5);
