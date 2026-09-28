@@ -275,7 +275,7 @@ export default function QuizPlayer() {
                     onClick={() => handleSelectAnswer(currentQuestion.id, option)}
                     className={`flex w-full items-start gap-3 rounded border p-3.5 text-left text-sm transition-colors ${
                       selected
-                        ? 'border-primary-600 bg-primary-50 font-medium text-primary-900 ring-1 ring-primary-600'
+                        ? 'border-primary-600 bg-primary-500/10 font-medium text-ink ring-1 ring-primary-600'
                         : 'border-line-strong bg-surface hover:border-muted hover:bg-canvas'
                     }`}
                   >
@@ -309,7 +309,7 @@ export default function QuizPlayer() {
                     onClick={() => handleSelectAnswer(currentQuestion.id, choice)}
                     className={`flex items-center justify-center rounded border p-4 text-sm font-semibold transition-colors ${
                       selected
-                        ? 'border-primary-600 bg-primary-50 text-primary-700 ring-1 ring-primary-600'
+                        ? 'border-primary-600 bg-primary-500/10 text-primary-600 ring-1 ring-primary-600'
                         : 'border-line-strong bg-surface hover:border-muted hover:bg-canvas'
                     }`}
                   >
@@ -332,8 +332,8 @@ export default function QuizPlayer() {
             </div>
           )}
 
-          {/* Short / Free Response */}
-          {currentQuestion.type === 'short_answer' && (
+          {/* Short Answer / Free Response */}
+          {['short_answer', 'free_response'].includes(currentQuestion.type) && (
             <div className="space-y-1.5">
               <label className="mb-1 block text-sm font-medium text-body">
                 Your Explanation / Free Response
@@ -343,11 +343,12 @@ export default function QuizPlayer() {
                 value={answers[currentQuestion.id] || ''}
                 onChange={(e) => handleSelectAnswer(currentQuestion.id, e.target.value)}
                 placeholder="Explain the concept concisely in your own words..."
-                className="field w-full resize-y font-sans leading-relaxed"
+                className="field w-full resize-y font-sans leading-relaxed text-sm"
               />
-              <p className="text-2xs text-muted">
-                Tip: Concise plain English answers receive the most accurate conceptual feedback.
-              </p>
+              <div className="flex items-center justify-between text-2xs text-muted">
+                <span>Tip: Concise plain English answers receive the most accurate conceptual feedback.</span>
+                <span>{(answers[currentQuestion.id] || '').length} characters</span>
+              </div>
             </div>
           )}
         </div>
@@ -389,9 +390,9 @@ export default function QuizPlayer() {
       </Card>
 
       {/* Bottom Floating Bar */}
-      <div className="flex items-center justify-between rounded-lg border border-line bg-surface px-4 py-3">
-        <div className="flex items-center gap-2 text-xs text-muted">
-          <HelpCircle className="h-4 w-4 text-primary-600" />
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-lg border border-line bg-surface px-4 py-3">
+        <div className="flex items-center gap-2 text-xs text-muted w-full sm:w-auto justify-center sm:justify-start">
+          <HelpCircle className="h-4 w-4 text-primary-600 shrink-0" />
           <span>
             {answeredCount === totalQuestions
               ? 'All questions answered! Ready to submit.'
@@ -404,6 +405,7 @@ export default function QuizPlayer() {
           size="md"
           loading={submitting}
           onClick={() => setShowConfirmModal(true)}
+          className="w-full sm:w-auto"
         >
           Submit Quiz Attempt
         </Button>

@@ -18,6 +18,7 @@ import {
   EmptyState,
   Input,
   Select,
+  Skeleton,
   Spinner,
 } from '../../components/ui';
 
@@ -210,8 +211,30 @@ export default function CourseCatalog() {
 
       {/* Content Area */}
       {loading ? (
-        <div className="flex min-h-[280px] items-center justify-center">
-          <Spinner size="lg" label="Loading courses" />
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-xs text-muted mb-2">
+            <Spinner size="sm" label="Loading courses" />
+            <span>Loading course catalog...</span>
+          </div>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Card key={i} className="flex flex-col justify-between space-y-4 p-5">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                    <Skeleton className="h-5 w-20 rounded-full" />
+                  </div>
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-5/6" />
+                </div>
+                <div className="flex items-center justify-between border-t border-line pt-4">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-8 w-24 rounded-lg" />
+                </div>
+              </Card>
+            ))}
+          </div>
         </div>
       ) : courses.length === 0 ? (
         <EmptyState
@@ -249,6 +272,9 @@ export default function CourseCatalog() {
                         <Badge tone={getDifficultyTone(course.difficulty)}>
                           {course.difficulty || 'beginner'}
                         </Badge>
+                        {course.source === 'ai_generated' && (
+                          <Badge tone="info">AI Generated</Badge>
+                        )}
                       </div>
                       {isEnrolled && <Badge tone="easy">Enrolled</Badge>}
                     </div>
@@ -287,8 +313,8 @@ export default function CourseCatalog() {
 
           {/* Pagination Controls */}
           {totalPages > 1 && (
-            <div className="mt-8 flex items-center justify-between border-t border-line pt-4">
-              <p className="text-sm text-muted">
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-line pt-4">
+              <p className="text-sm text-muted text-center sm:text-left">
                 Showing page <span className="font-medium text-ink">{page}</span> of{' '}
                 <span className="font-medium text-ink">{totalPages}</span> ({total} total courses)
               </p>

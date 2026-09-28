@@ -17,6 +17,7 @@ import {
   Card,
   EmptyState,
   ProgressBar,
+  Skeleton,
   Spinner,
   Tabs,
 } from '../../components/ui';
@@ -192,8 +193,41 @@ export default function CourseDetail() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[350px] items-center justify-center">
-        <Spinner size="lg" label="Loading course details..." />
+      <div className="space-y-8 pb-12">
+        <div className="flex items-center gap-2 text-xs text-muted">
+          <Spinner size="sm" label="Loading course" />
+          <span>Loading course track details...</span>
+        </div>
+        {/* Hero banner skeleton */}
+        <div className="rounded-lg border border-line bg-surface p-6 sm:p-8 space-y-4">
+          <div className="flex flex-wrap gap-2">
+            <Skeleton className="h-5 w-24 rounded-full" />
+            <Skeleton className="h-5 w-20 rounded-full" />
+          </div>
+          <Skeleton className="h-8 w-3/4" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-2/3" />
+          <div className="flex gap-4 pt-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+        </div>
+        {/* Module skeletons */}
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="p-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-8 w-8 rounded-lg" />
+                <div className="space-y-1.5">
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-3 w-28" />
+                </div>
+              </div>
+              <Skeleton className="h-8 w-24 rounded-lg" />
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
@@ -258,6 +292,9 @@ export default function CourseDetail() {
               <Badge tone={getDifficultyTone(course.difficulty)}>
                 {course.difficulty || 'beginner'}
               </Badge>
+              {course.source === 'ai_generated' && (
+                <Badge tone="info">AI Generated</Badge>
+              )}
               {isEnrolled && (
                 <Badge tone={isAllCompleted ? 'easy' : 'warning'}>
                   {isAllCompleted ? '✓ Completed' : 'Enrolled'}
@@ -333,8 +370,8 @@ export default function CourseDetail() {
                   </div>
                 ) : nextLesson ? (
                   <div className="space-y-3">
-                    <div className="rounded-lg bg-primary-50 px-3 py-2 text-xs text-primary-800">
-                      <span className="font-semibold">Next up:</span> {nextLesson.title}
+                    <div className="rounded-lg bg-primary-500/10 px-3 py-2 text-xs text-primary-600">
+                      <span className="font-semibold text-ink">Next up:</span> {nextLesson.title}
                     </div>
                     <Link to={`/lessons/${nextLesson.id}`} className="block w-full">
                       <Button variant="primary" className="w-full">
@@ -501,7 +538,7 @@ export default function CourseDetail() {
                           </div>
                         </div>
 
-                        <div className="flex shrink-0 items-center gap-2 justify-end">
+                        <div className="flex flex-wrap items-center gap-2 justify-start sm:justify-end mt-2 sm:mt-0">
                           {lesson.content_md && (
                             <Button
                               variant="ghost"
@@ -653,7 +690,7 @@ export default function CourseDetail() {
                   >
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="flex h-6 w-6 items-center justify-center rounded bg-primary-100 text-xs font-bold text-primary-700">
+                        <span className="flex h-6 w-6 items-center justify-center rounded bg-primary-500/15 text-xs font-bold text-primary-600">
                           Q
                         </span>
                         <h3 className="font-semibold text-ink">

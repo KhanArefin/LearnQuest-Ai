@@ -10,5 +10,14 @@ export const submitAttempt = (attemptId, answers) =>
 export const getAttempt = (attemptId) => client.get(`/api/quizzes/attempts/${attemptId}`);
 
 // --- AI generation (M1) ---
-export const generateQuiz = (body) => client.post('/api/quizzes/generate', body);
-export const generateAdaptiveQuiz = (body) => client.post('/api/quizzes/generate/adaptive', body);
+export const generateQuiz = (bodyOrLessonId) =>
+  client.post(
+    '/api/quizzes/generate',
+    typeof bodyOrLessonId === 'string' ? { lesson_id: bodyOrLessonId } : bodyOrLessonId
+  );
+export const generateAdaptiveQuiz = (body = {}) => client.post('/api/quizzes/generate/adaptive', body);
+
+// --- free-response grading (M1 endpoint) ---
+export const gradeOpenAnswer = (attemptId, payload) =>
+  client.post(`/api/quizzes/attempts/${attemptId}/grade-open`, payload);
+

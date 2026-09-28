@@ -26,6 +26,9 @@ const CourseDetail = lazy(() => import('./pages/Courses/CourseDetail'));
 const LessonViewer = lazy(() => import('./pages/Lesson/LessonViewer'));
 const QuizPlayer = lazy(() => import('./pages/Quiz/QuizPlayer'));
 const QuizResult = lazy(() => import('./pages/Quiz/QuizResult'));
+const PracticeList = lazy(() => import('./pages/Practice/PracticeList'));
+const ProblemViewer = lazy(() => import('./pages/Practice/ProblemViewer'));
+const ReviewScreen = lazy(() => import('./pages/Review/ReviewScreen'));
 const History = lazy(() => import('./pages/History/History'));
 
 // --- Member 1: tutor & avatar ---
@@ -77,6 +80,9 @@ export default function App() {
           <Route path="/lessons/:lessonId" element={<LessonViewer />} />
           <Route path="/quiz/:quizId" element={<QuizPlayer />} />
           <Route path="/quiz/attempts/:attemptId" element={<QuizResult />} />
+          <Route path="/practice" element={<PracticeList />} />
+          <Route path="/practice/:problemId" element={<ProblemViewer />} />
+          <Route path="/review" element={<ReviewScreen />} />
           <Route path="/history" element={<History />} />
 
           {/* Member 1 */}

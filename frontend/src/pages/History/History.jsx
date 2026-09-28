@@ -151,11 +151,17 @@ export default function History() {
               : `No ${activeFilter} activities found in your timeline.`
           }
           action={
-            <Link to="/courses">
-              <Button variant="primary" size="sm">
-                Browse Courses
+            activeFilter !== 'all' ? (
+              <Button variant="secondary" size="sm" onClick={() => handleTabChange('all')}>
+                Show All Activities
               </Button>
-            </Link>
+            ) : (
+              <Link to="/courses">
+                <Button variant="primary" size="sm">
+                  Browse Courses
+                </Button>
+              </Link>
+            )
           }
         />
       ) : (
@@ -190,7 +196,7 @@ export default function History() {
                             className={`inline-flex items-center gap-1.5 rounded px-2 py-0.5 font-medium ${
                               isLesson
                                 ? 'bg-info-bg text-info-fg'
-                                : 'bg-primary-50 text-primary-700'
+                                : 'bg-primary-500/15 text-primary-600'
                             }`}
                           >
                             <span>{isLesson ? '📖' : '⚡'}</span>
@@ -269,7 +275,7 @@ export default function History() {
 
           {/* Pagination Controls */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between pt-2">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
               <span className="text-xs text-muted">
                 Page {page} of {totalPages}
               </span>
