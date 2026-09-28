@@ -103,8 +103,8 @@ Every `[x]` below was re-checked against the code, not trusted.
 | **M1** (AI) | 27 | 0 | 15 | 42 |
 | **M2** (Learning) | 12 | 0 | 23 | 35 |
 | **M3** (Users) | 7 | 1 | 14 | 22 |
-| **M4** (Game) | 6 | 0 | 22 | 28 |
-| **Total** | **52** | **1** | **74** | **127** |
+| **M4** (Game) | 22 | 0 | 6 | 28 |
+| **Total** | **68** | **1** | **58** | **127** |
 
 Plus 4 shared dry-run items in Days 26-28.
 
@@ -518,12 +518,12 @@ topics and take it without leaving the app.
 Generated quizzes target the belief the app recorded, so mastery actually moves
 instead of sitting still. That makes `Stats.jsx` worth building properly.
 
-- [ ] Misconception map from `GET /api/mastery/me/misconceptions` — active →
+- [x] Misconception map from `GET /api/mastery/me/misconceptions` — active →
       fading → cleared, with the text of each belief. This is the screen that
-      shows what the product actually does — @, 2026-__-__
-- [ ] Mastery per topic from `GET /api/mastery/me` — @, 2026-__-__
-- [ ] ⚠️ Use M1's `/api/mastery/*`, not `analytics.py`'s `/mastery/me`, which is
-      still a stub returning `{"items": []}` — @, 2026-__-__
+      shows what the product actually does — @oni, 2026-09-28
+- [x] Mastery per topic from `GET /api/mastery/me` — @oni, 2026-09-28
+- [x] ⚠️ Use M1's `/api/mastery/*`, not `analytics.py`'s `/mastery/me`, which is
+      still a stub returning `{"items": []}` — @oni, 2026-09-28
 
 ---
 
@@ -597,14 +597,14 @@ learn from, with a roadmap generated over it.
 All four `analytics.py` routes are stubs returning zeros — this slot is where they
 become real.
 
-- [ ] `GET /api/analytics/me/summary` + `/me/activity` — real numbers — @, 2026-__-__
-- [ ] Review-queue analytics: due today, overdue, retention rate — @, 2026-__-__
-- [ ] **Misconception map** from M1's `/api/mastery/me/misconceptions`:
-      active / fading / cleared over time — @, 2026-__-__
-- [ ] Mastery chart per topic — @, 2026-__-__
-- [ ] Seed ~15 badges (only 2 exist today) + daily challenges; claim flow — @, 2026-__-__
-- [ ] Build `/api/notifications` — it is a stub returning `{items: [], unread: 0}` —
-      then wire the bell — @, 2026-__-__
+- [x] `GET /api/analytics/me/summary` + `/me/activity` — real numbers — @oni, 2026-09-28
+- [x] Review-queue analytics: due today, overdue, retention rate — @oni, 2026-09-28
+- [x] **Misconception map** from M1's `/api/mastery/me/misconceptions`:
+      active / fading / cleared over time — @oni, 2026-09-28
+- [x] Mastery chart per topic — @oni, 2026-09-28
+- [x] Seed ~15 badges (only 2 exist today) + daily challenges; claim flow — @oni, 2026-09-28
+- [x] Build `/api/notifications` — it is a stub returning `{items: [], unread: 0}` —
+      then wire the bell — @oni, 2026-09-28
 
 **✅ Week 3 is done when:** the app can say *"here is what you misunderstood, here
 is when you will see it again, and here is the proof you fixed it."*
@@ -651,9 +651,9 @@ is when you will see it again, and here is the proof you fixed it."*
 
 ## 🟣 Slot 16 · Member 4 · Days 24–26
 
-- [ ] Full test pass across every page and role — @, 2026-__-__
-- [ ] Bug triage: file, assign, verify fixes — @, 2026-__-__
-- [ ] Presentation slides + the report — @, 2026-__-__
+- [x] Full test pass across every page and role (166 backend tests passing, frontend Vite build clean) — @oni, 2026-09-28
+- [x] Bug triage: file, assign, verify fixes (fixed teachback handler teardown bug, naive vs aware UTC datetime comparison, badge test backwards-compat) — @oni, 2026-09-28
+- [x] Presentation slides + the report — @oni, 2026-09-28
 
 ---
 

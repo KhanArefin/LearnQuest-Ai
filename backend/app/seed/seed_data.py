@@ -474,19 +474,131 @@ INITIAL_BADGES = [
     },
 ]
 
+WEEK3_BADGES = [
+    {
+        "code": "first_quiz",
+        "name": "First Quiz",
+        "description": "Completed your first quiz challenge",
+        "icon": "📝",
+        "criteria": {"type": "count", "event": "quiz.submitted", "threshold": 1},
+        "xp_reward": 50,
+    },
+    {
+        "code": "perfect_score",
+        "name": "Flawless",
+        "description": "Scored a perfect 100% on a quiz",
+        "icon": "💯",
+        "criteria": {"type": "quiz_score", "threshold": 100},
+        "xp_reward": 75,
+    },
+    {
+        "code": "quiz_master_10",
+        "name": "Quiz Master",
+        "description": "Completed 10 quizzes",
+        "icon": "🧠",
+        "criteria": {"type": "count", "event": "quiz.submitted", "threshold": 10},
+        "xp_reward": 100,
+    },
+    {
+        "code": "course_complete",
+        "name": "Course Conqueror",
+        "description": "Successfully completed a full course",
+        "icon": "🏆",
+        "criteria": {"type": "count", "event": "course.completed", "threshold": 1},
+        "xp_reward": 200,
+    },
+    {
+        "code": "streak_3",
+        "name": "On Fire (3 Days)",
+        "description": "Built a 3-day learning streak",
+        "icon": "⚡",
+        "criteria": {"type": "streak", "threshold": 3},
+        "xp_reward": 50,
+    },
+    {
+        "code": "streak_30",
+        "name": "Monthly Master",
+        "description": "Maintained an incredible 30-day learning streak",
+        "icon": "🌟",
+        "criteria": {"type": "streak", "threshold": 30},
+        "xp_reward": 300,
+    },
+    {
+        "code": "night_owl",
+        "name": "Night Owl",
+        "description": "Completed a learning session late at night (10 PM - 4 AM)",
+        "icon": "🦉",
+        "criteria": {"type": "time_of_day", "start_hour": 22, "end_hour": 4},
+        "xp_reward": 50,
+    },
+    {
+        "code": "early_bird",
+        "name": "Early Bird",
+        "description": "Completed a learning session early in the morning (4 AM - 8 AM)",
+        "icon": "🌅",
+        "criteria": {"type": "time_of_day", "start_hour": 4, "end_hour": 8},
+        "xp_reward": 50,
+    },
+    {
+        "code": "curious_mind_50_msgs",
+        "name": "Curious Mind",
+        "description": "Sent 50 questions or responses to the AI tutor",
+        "icon": "💬",
+        "criteria": {"type": "tutor_messages", "threshold": 50},
+        "xp_reward": 100,
+    },
+    {
+        "code": "comeback",
+        "name": "The Comeback",
+        "description": "Returned to study after 7 or more days away",
+        "icon": "🔄",
+        "criteria": {"type": "comeback", "threshold_days": 7},
+        "xp_reward": 100,
+    },
+    {
+        "code": "topic_master",
+        "name": "Topic Master",
+        "description": "Achieved greater than 90% mastery on a topic",
+        "icon": "🎯",
+        "criteria": {"type": "topic_mastery", "threshold": 0.9},
+        "xp_reward": 150,
+    },
+    {
+        "code": "level_5",
+        "name": "Rising Star",
+        "description": "Reached Level 5 in LearnQuest",
+        "icon": "⭐",
+        "criteria": {"type": "stat", "field": "level", "threshold": 5},
+        "xp_reward": 100,
+    },
+    {
+        "code": "level_10",
+        "name": "Legendary Learner",
+        "description": "Reached Level 10 in LearnQuest",
+        "icon": "👑",
+        "criteria": {"type": "stat", "field": "level", "threshold": 10},
+        "xp_reward": 250,
+    },
+]
 
-def seed_badges(db: Session) -> list[Any]:
-    """Seed exactly the two Week 2 initial badges: first_lesson and streak_7.
+ALL_BADGES = INITIAL_BADGES + WEEK3_BADGES
 
-    Idempotent: updates existing or creates missing badges. Cleans up any unreferenced
-    stray badges so exactly the 2 required initial badges exist.
+
+def seed_badges(db: Session, include_all: bool = False) -> list[Any]:
+    """Seed badges into the database.
+
+    Idempotent: updates existing or creates missing badges.
+    When include_all=False (default for backwards compatibility with Week 2 tests),
+    seeds exactly the two initial badges (first_lesson, streak_7).
+    When include_all=True, seeds all 15 badges defined across Week 2 and Week 3.
     """
     from app.models.gamification import Badge, UserBadge
 
+    badge_defs = ALL_BADGES if include_all else INITIAL_BADGES
     seeded = []
-    target_codes = {b["code"] for b in INITIAL_BADGES}
+    target_codes = {b["code"] for b in badge_defs}
 
-    for badge_def in INITIAL_BADGES:
+    for badge_def in badge_defs:
         existing = db.query(Badge).filter(Badge.code == badge_def["code"]).first()
         if existing:
             existing.name = badge_def["name"]
@@ -508,7 +620,7 @@ def seed_badges(db: Session) -> list[Any]:
             db.add(new_badge)
             seeded.append(new_badge)
 
-    # Clean up unreferenced stray badges outside the two required initial badges
+    # Clean up unreferenced stray badges outside the target set
     extra_badges = db.query(Badge).filter(~Badge.code.in_(target_codes)).all()
     for extra in extra_badges:
         has_earned = db.query(UserBadge).filter(UserBadge.badge_id == extra.id).first()
@@ -517,13 +629,24 @@ def seed_badges(db: Session) -> list[Any]:
             logger.info("Cleaned up unreferenced non-standard badge: %s", extra.code)
 
     db.commit()
-    logger.info("Seeded exactly %d initial badges (first_lesson, streak_7).", len(seeded))
+    logger.info("Seeded %d badges (include_all=%s).", len(seeded), include_all)
     return seeded
 
 
+def seed_all_badges(db: Session) -> list[Any]:
+    """Seed all 15 badges across Week 2 and Week 3."""
+    return seed_badges(db, include_all=True)
+
+
 def seed_challenges(db: Session) -> None:
-    """TODO(M4): daily challenge template pool (plan.md §9.5)."""
-    logger.info("seed_challenges placeholder (owned by Member 4).")
+    """Seed daily challenge templates pool (plan.md §9.5)."""
+    from app.services.challenges import get_or_create_daily_challenges
+
+    try:
+        challenges = get_or_create_daily_challenges(db)
+        logger.info("Seeded %d daily challenges for today.", len(challenges))
+    except Exception as e:
+        logger.warning("seed_challenges warning: %s", e)
 
 
 def main() -> None:
@@ -551,7 +674,7 @@ def main() -> None:
         except Exception as e:
             logger.warning("seed_quizzes failed: %s", e)
         try:
-            seed_badges(db)
+            seed_badges(db, include_all=True)
         except Exception:
             pass
         try:

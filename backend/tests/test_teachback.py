@@ -300,6 +300,7 @@ class TestTeachBackLoop(TeachBackTestBase):
         self.assertEqual(misconception_status(row), "fading")
 
         clear_handlers("teachback.completed")
+        register_handler("teachback.completed")(teachback._on_teachback_completed)
 
     def test_wrong_retake_does_not_pass_and_burns_a_retry(self) -> None:
         from app.services import teachback

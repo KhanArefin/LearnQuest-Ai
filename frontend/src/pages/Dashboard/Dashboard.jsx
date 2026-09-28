@@ -24,7 +24,7 @@ import {
   ProgressBar,
   Spinner,
 } from '../../components/ui';
-import { StreakFlame, XPBar } from '../../components/game';
+import { StreakFlame, XPBar, DailyChallenges } from '../../components/game';
 
 function formatDuration(seconds) {
   if (!seconds || seconds <= 0) return '0 min';
@@ -298,6 +298,9 @@ export default function Dashboard() {
           </div>
         </Card>
       )}
+
+      {/* 2.5 Daily Challenges */}
+      <DailyChallenges onClaimed={() => myStats().then(setStats).catch(() => {})} />
 
       {/* 3. In-Progress Learning Tracks (Course Progress) */}
       <div className="space-y-4">
