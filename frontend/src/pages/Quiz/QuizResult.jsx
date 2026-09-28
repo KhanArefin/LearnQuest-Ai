@@ -11,8 +11,10 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Award,
+  BookOpen,
   CheckCircle2,
   Clock,
+  GraduationCap,
   RotateCcw,
   XCircle,
 } from 'lucide-react';
@@ -27,13 +29,14 @@ import {
   ProgressBar,
   Spinner,
 } from '../../components/ui';
-import { getAttempt } from '../../api/quizzes';
+import { getAttempt, getQuiz } from '../../api/quizzes';
 
 export default function QuizResult() {
   const { attemptId } = useParams();
   const navigate = useNavigate();
 
   const [attempt, setAttempt] = useState(null);
+  const [quizDetails, setQuizDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -46,6 +49,13 @@ export default function QuizResult() {
       const res = await getAttempt(attemptId);
       const data = res?.data || res;
       setAttempt(data);
+      if (data?.quiz_id) {
+        getQuiz(data.quiz_id)
+          .then((qRes) => {
+            setQuizDetails(qRes?.data || qRes);
+          })
+          .catch(() => {});
+      }
     } catch (err) {
       console.error('Failed to load quiz attempt result:', err);
       const detail = err?.response?.data?.detail || err?.detail || 'Could not load quiz results.';
@@ -264,11 +274,47 @@ export default function QuizResult() {
 
                   {/* Explanation */}
                   {item.explanation && (
-                    <div className="rounded border-l-2 border-primary-600 bg-primary-50/50 p-3 text-xs leading-relaxed text-body">
-                      <span className="font-semibold text-primary-700">
+                    <div className="rounded border-l-2 border-primary-600 bg-primary-500/10 p-3 text-xs leading-relaxed text-body">
+                      <span className="font-semibold text-primary-600">
                         Explanation:{' '}
                       </span>
                       {item.explanation}
+                    </div>
+                  )}
+
+                  {/* Actions for incorrect answers (Slot 9D) */}
+                  {!isCorrect && (
+                    <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-line pt-3">
+                      {quizDetails?.lesson_id ? (
+                        <Link to={`/lessons/${quizDetails.lesson_id}`}>
+                          <Button variant="secondary" size="sm">
+                            <BookOpen className="h-3.5 w-3.5 text-muted" />
+                            Learn this
+                          </Button>
+                        </Link>
+                      ) : (
+                        <Link to="/courses">
+                          <Button variant="secondary" size="sm">
+                            <BookOpen className="h-3.5 w-3.5 text-muted" />
+                            Learn this
+                          </Button>
+                        </Link>
+                      )}
+
+                      <Link
+                        to={
+                          quizDetails?.lesson_id
+                            ? `/tutor?lessonId=${quizDetails.lesson_id}&mode=teachback`
+                            : item.topic_tag
+                            ? `/tutor?topic=${encodeURIComponent(item.topic_tag)}&mode=teachback`
+                            : '/tutor'
+                        }
+                      >
+                        <Button variant="secondary" size="sm">
+                          <GraduationCap className="h-3.5 w-3.5 text-primary-500" />
+                          Teach Nova
+                        </Button>
+                      </Link>
                     </div>
                   )}
                 </Card>

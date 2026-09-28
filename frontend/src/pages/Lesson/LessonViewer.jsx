@@ -12,6 +12,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import remarkGfm from 'remark-gfm';
 import { getLesson, updateProgress } from '../../api/lessons';
 import { explain } from '../../api/tutor';
+import { generateQuiz } from '../../api/quizzes';
+import { myQuota } from '../../api/jobs';
 import {
   Badge,
   Button,
@@ -19,6 +21,7 @@ import {
   EmptyState,
   Modal,
   ProgressBar,
+  Skeleton,
   Spinner,
 } from '../../components/ui';
 
@@ -56,6 +59,53 @@ export default function LessonViewer() {
   const [tutorLoading, setTutorLoading] = useState(false);
   const [tutorResponse, setTutorResponse] = useState(null);
   const [tutorError, setTutorError] = useState(null);
+
+  // AI Quiz Generation State & Quota (Slot 9D)
+  const [generatingQuiz, setGeneratingQuiz] = useState(false);
+  const [quizGenError, setQuizGenError] = useState(null);
+  const [quota, setQuota] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    myQuota()
+      .then((data) => {
+        if (isMounted) setQuota(data);
+      })
+      .catch(() => {
+        // Non-fatal if quota cannot be fetched
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handlePracticeThisLesson = async () => {
+    if (!currentLessonId || generatingQuiz) return;
+    if (quota && quota.remaining <= 0) {
+      setQuizGenError("Today's generation limit has been reached.");
+      return;
+    }
+    setGeneratingQuiz(true);
+    setQuizGenError(null);
+    try {
+      const data = await generateQuiz(currentLessonId);
+      if (data?.id) {
+        navigate(`/quiz/${data.id}`);
+      } else {
+        setQuizGenError('Quiz was generated with an unexpected response shape. Please try again.');
+      }
+    } catch (err) {
+      console.error('Quiz generation failed:', err);
+      if (err?.status === 429 || err?.response?.status === 429) {
+        setQuizGenError("Today's generation limit has been reached.");
+      } else {
+        const msg = err?.detail || err?.response?.data?.detail || 'Failed to generate quiz for this lesson. Please try again.';
+        setQuizGenError(msg);
+      }
+    } finally {
+      setGeneratingQuiz(false);
+    }
+  };
 
   // 1. Fetch lesson data
   const fetchLessonData = useCallback(() => {
@@ -256,22 +306,65 @@ export default function LessonViewer() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <Spinner size="lg" label="Loading lesson..." />
+      <div className="space-y-6 pb-20">
+        <div className="flex items-center gap-2 text-xs text-muted mb-2">
+          <Spinner size="sm" label="Loading lesson" />
+          <span>Loading lesson content...</span>
+        </div>
+        <div className="flex items-center justify-between border-b border-line pb-4">
+          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-8 w-36 rounded-lg" />
+        </div>
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+          <div className="lg:col-span-8 space-y-6">
+            <div className="space-y-3">
+              <Skeleton className="h-5 w-24 rounded-full" />
+              <Skeleton className="h-9 w-3/4" />
+              <div className="flex gap-2">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-20" />
+              </div>
+            </div>
+            <div className="space-y-3 pt-4">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-11/12" />
+              <Skeleton className="h-4 w-4/5" />
+              <Skeleton className="h-28 w-full rounded-xl" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-9/12" />
+            </div>
+          </div>
+          <div className="lg:col-span-4 space-y-4">
+            <Card className="p-5 space-y-3">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-5/6" />
+              <Skeleton className="h-3 w-4/6" />
+            </Card>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (error || !lesson) {
     return (
-      <div className="py-8">
+      <div className="py-8 space-y-4">
+        <Button variant="ghost" size="sm" onClick={() => navigate('/courses')}>
+          ← Return to Courses
+        </Button>
         <EmptyState
           title="Lesson Not Found"
           description={error || 'Unable to display this lesson.'}
           action={
-            <Button variant="secondary" onClick={() => navigate('/courses')}>
-              Return to Courses
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={() => navigate('/courses')}>
+                Return to Courses
+              </Button>
+              <Button variant="primary" onClick={fetchLessonData}>
+                Try Again
+              </Button>
+            </div>
           }
         />
       </div>
@@ -462,7 +555,7 @@ export default function LessonViewer() {
                   },
                   blockquote: ({ children, ...props }) => (
                     <blockquote
-                      className="my-4 border-l-4 border-primary-500 bg-primary-50/40 py-2 pl-4 italic text-body"
+                      className="my-4 border-l-4 border-primary-500 bg-primary-500/10 py-2 pl-4 italic text-body"
                       {...props}
                     >
                       {children}
@@ -534,11 +627,20 @@ export default function LessonViewer() {
               </Link>
             )}
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
+              <Button
+                variant="secondary"
+                loading={generatingQuiz}
+                disabled={generatingQuiz || (quota && quota.remaining <= 0)}
+                onClick={handlePracticeThisLesson}
+              >
+                {generatingQuiz ? 'Generating (~8s)...' : 'Practice this lesson 🎯'}
+              </Button>
+
               {lesson?.quiz_id && (
                 <Link to={`/quiz/${lesson.quiz_id}`}>
                   <Button variant="secondary">
-                    Practice Quiz 🎯
+                    Standard Quiz
                   </Button>
                 </Link>
               )}
@@ -590,27 +692,60 @@ export default function LessonViewer() {
               </Card>
             )}
 
-            {/* Practice Quiz Card */}
-            {lesson?.quiz_id && (
-              <Card className="border-line bg-surface p-5">
-                <div className="space-y-2">
+            {/* Assessment / Practice Quiz Card */}
+            <Card className="border-line bg-surface p-5">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
                   <span className="label text-easy-fg">
                     Assessment
                   </span>
-                  <h4 className="text-base font-semibold text-ink">
-                    Lesson Practice Quiz
-                  </h4>
-                  <p className="text-xs leading-relaxed text-muted">
-                    Test your understanding of the concepts covered in this lesson.
-                  </p>
-                  <Link to={`/quiz/${lesson.quiz_id}`} className="block pt-1">
-                    <Button variant="primary" size="sm" className="w-full">
-                      Start Quiz 🎯
-                    </Button>
-                  </Link>
+                  {quota && (
+                    <span className="font-mono text-xs text-muted">
+                      {quota.remaining} gen{quota.remaining === 1 ? '' : 's'} left
+                    </span>
+                  )}
                 </div>
-              </Card>
-            )}
+                <h4 className="text-base font-semibold text-ink">
+                  Practice This Lesson
+                </h4>
+                <p className="text-xs leading-relaxed text-muted">
+                  Generate an AI quiz directly from this lesson's key concepts to test your understanding.
+                </p>
+
+                {quizGenError && (
+                  <div className="rounded border border-hard/40 bg-hard-bg p-2.5 text-xs text-hard-fg">
+                    {quizGenError}
+                  </div>
+                )}
+
+                {quota && quota.remaining <= 0 && !quizGenError && (
+                  <div className="rounded border border-medium/40 bg-medium-bg p-2.5 text-xs text-medium-fg">
+                    Today's generation limit has been reached.
+                  </div>
+                )}
+
+                <div className="space-y-2 pt-1">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    loading={generatingQuiz}
+                    disabled={generatingQuiz || (quota && quota.remaining <= 0)}
+                    onClick={handlePracticeThisLesson}
+                    className="w-full"
+                  >
+                    {generatingQuiz ? 'Generating quiz (~8s)...' : 'Practice this lesson 🎯'}
+                  </Button>
+
+                  {lesson?.quiz_id && (
+                    <Link to={`/quiz/${lesson.quiz_id}`} className="block">
+                      <Button variant="secondary" size="sm" className="w-full">
+                        Standard Quiz
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </Card>
 
             {/* Tutor Shortcut Card */}
             <Card className="bg-primary-50 p-5">
